@@ -3,6 +3,6 @@ python:
   - "2.7"
   - "3.5"
   - "3.6"
-install: "pip install .[test]"
+install: "pip install ."
 script: tox
 # after_success: coveralls
