@@ -27,5 +27,4 @@ setup(
     install_requires=['lxml'],
     setup_requires=['pytest-runner'],
     tests_require=['pytest', 'pytest-cov', 'coverage', 'tox'],
-    extras_require={'test': ['pytest', 'pytest-cov', 'coverage', 'tox']}
 )
