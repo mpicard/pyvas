@@ -1,9 +1,22 @@
-sudo: false
 language: python
-python:
-  - "2.7"
-  - "3.5"
-  - "3.6"
+python: "3.6"
+sudo: false
+env:
+  matrix:
+    - TOXENV=check
+    - TOXENV=py26
+    - TOXENV=py35
+    - TOXENV=py36
 install: "pip install tox-travis"
 script: tox
-# after_success: coveralls
+after_failure:
+  - more .tox/log/* | cat
+  - more .tox/log/* | cat
+before_cache:
+  - rm -rf $HOME/.cache/pip/log
+cache:
+  directories:
+    - $HOME/.cache/pip
+notifications:
+  email:
+    on_failure: always

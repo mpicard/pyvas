@@ -16,7 +16,7 @@ class _ResponseError(Error):
         super(_ResponseError, self).__init__(cmd, *args)
 
     def __str__(self):
-        return '%s [HTTP%s] %s' % self.args
+        return '[Http {1}] {0}: {2}'.format(*self.args)
 
 
 class ClientError(_ResponseError):
