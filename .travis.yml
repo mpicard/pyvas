@@ -3,10 +3,9 @@ python: "3.6"
 sudo: false
 env:
   matrix:
+    - TOXENV=clean
     - TOXENV=check
     - TOXENV=py27
-    - TOXENV=py35
-    - TOXENV=py36
 install: "pip install tox-travis"
 script: tox
 after_failure:
