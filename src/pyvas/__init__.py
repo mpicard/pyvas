@@ -8,7 +8,8 @@ import six
 from lxml import etree
 from lxml.etree import ElementTree, Element
 
-from .exceptions import (ClientError, ServerError, ResultError, AuthenticationError)
+from .exceptions import (ClientError, ServerError, ResultError,
+                         AuthenticationError)
 from .utils import (dict_to_xml, xml_to_dict)
 
 
@@ -52,6 +53,7 @@ class Client(object):
         """Authenticate Client"""
         if username is None:
             username = self.username
+
         if password is None:
             password = self.password
 
@@ -160,7 +162,8 @@ class Client(object):
     def get_task(self, id):
         return self._get('task', id=id)
 
-    def create_task(self, name, config_id, target_id, scanner_id=None, comment=None):
+    def create_task(self, name, config_id, target_id, scanner_id=None,
+                    comment=None):
         # TODO: finish spec
         if comment is None:
             comment = ""
@@ -168,10 +171,12 @@ class Client(object):
         if scanner_id is None:
             # Use default scanner
             try:
-                scanner_id = self.list_scanners(name="OpenVAS Default")[0]["@id"]
-            except ClientError:
-                raise ClientError("Could not find default scanner, please specify "
-                                  "scanner with scanner_id")
+                scanner_id = self.list_scanners(
+                    name="OpenVAS Default"
+                )[0]["@id"]
+            except (ClientError, IndexError):
+                raise ClientError("Could not find default scanner, please "
+                                  "specify scanner with scanner_id")
 
         request = dict_to_xml(
             "create_task",
@@ -212,7 +217,7 @@ class Client(object):
             report = xml_to_dict(report)
         except TypeError:
             if not isinstance(report, dict):
-                raise ValueError("report must be either a ElementTree or a dict")
+                raise ValueError("report must be a ElementTree or a dict")
 
         try:
             in_assets = int(in_assets)
@@ -233,7 +238,7 @@ class Client(object):
                 task.update({"comment": task_comment})
             task = dict_to_xml("task", task)
         elif task_name is None and task_id is None:
-            raise ValueError("You must use either the task_id or the task_name")
+            raise ValueError("You must use either task_id or task_name")
 
         request.append(task)
 
@@ -261,6 +266,7 @@ class Client(object):
         if report["@content_type"] == "text/xml":
             # TODO: return report contents
             return report
+        # TODO: investigate why the tail is the content and not the text
         return report.find('.//report_format').tail.decode('base64')
 
     """

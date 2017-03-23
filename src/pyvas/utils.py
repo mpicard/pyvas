@@ -7,7 +7,7 @@ def dict_to_xml(root, dct):
     """Convert dict to ElementTree"""
     try:
         root = str(root)
-    except:
+    except Exception:
         raise TypeError("root must be a string")
 
     def inner_dict_to_xml(parent, dict_item):
@@ -53,14 +53,15 @@ def xml_to_dict(tree):
         for dc in map(xml_to_dict, children):
             for k, v in six.iteritems(dc):
                 dd[k].append(v)
-        d = {tree.tag: {k:v[0] if len(v) == 1 else v for k, v in six.iteritems(dd)}}
+        d = {tree.tag: {k: v[0] if len(v) == 1 else v
+                        for k, v in six.iteritems(dd)}}
     if tree.attrib:
         d[tree.tag].update(('@' + k, v) for k, v in six.iteritems(tree.attrib))
     if tree.text:
         text = tree.text.strip()
         if children or tree.attrib:
             if text:
-              d[tree.tag]['#text'] = text
+                d[tree.tag]['#text'] = text
         else:
             d[tree.tag] = text
     return d
