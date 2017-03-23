@@ -3,7 +3,6 @@ python: "3.6"
 sudo: false
 env:
   matrix:
-    - TOXENV=clean
     - TOXENV=check
     - TOXENV=py27
 install: "pip install tox-travis"
