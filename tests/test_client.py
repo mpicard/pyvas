@@ -8,12 +8,8 @@ from __future__ import unicode_literals, print_function
 import os
 import uuid
 import time
-import datetime
-import six
-import pytest
-from lxml import etree
 
-from pyvas import Client, utils, exceptions
+from pyvas import Client, exceptions
 
 
 HOST = os.environ.get('OPENVAS_HOST')
@@ -53,7 +49,7 @@ class TestTargets(TestClientBase):
     def test_list_target(self):
         try:
             self.cli.create_target(name=NAME, hosts='127.0.0.1')
-        except exceptions.ClientError: # Already exists
+        except exceptions.ClientError:  # Already exists
             pass
         response = self.cli.list_targets()
         assert response and isinstance(response, list)
@@ -63,7 +59,7 @@ class TestTargets(TestClientBase):
     def test_list_filter_target(self):
         try:
             self.cli.create_target(name=NAME, hosts='127.0.0.1')
-        except exceptions.ClientError: # Already exists
+        except exceptions.ClientError:  # Already exists
             pass
         response = self.cli.list_targets(name=NAME)
         assert response[0]['name'] == NAME
@@ -72,7 +68,7 @@ class TestTargets(TestClientBase):
     def test_get_target(self):
         try:
             target = self.cli.create_target(name=NAME, hosts='127.0.0.1')
-        except exceptions.ClientError: # Already exists
+        except exceptions.ClientError:  # Already exists
             target = self.cli.list_targets(name=NAME)[0]
         response = self.cli.get_target(id=target["@id"])
         assert isinstance(response, dict)
@@ -82,7 +78,7 @@ class TestTargets(TestClientBase):
     def test_delete_target(self):
         try:
             target = self.cli.create_target(name=NAME, hosts='127.0.0.1')
-        except exceptions.ClientError: # Already exists
+        except exceptions.ClientError:  # Already exists
             target = self.cli.list_targets(name=NAME)[0]
         response = self.cli.delete_target(id=target['@id'])
         assert response.get('status') == '200'
@@ -98,7 +94,6 @@ class TestTargets(TestClientBase):
 
 
 class TestConfigs(TestClientBase):
-
 
     def test_create_config(self):
         copy = self.cli.list_configs(name="empty")[0]
@@ -122,7 +117,7 @@ class TestConfigs(TestClientBase):
             config = self.cli.list_configs(name=NAME)[0]
         except IndexError:
             copy = self.cli.list_configs(name="empty")[0]
-            config = self.cli.create_config(name=NAME, copy_id=config["@id"])
+            config = self.cli.create_config(name=NAME, copy_id=copy["@id"])
         response = self.cli.get_config(id=config["@id"])
         assert response and config
         assert isinstance(response, dict)
@@ -134,7 +129,7 @@ class TestConfigs(TestClientBase):
             config = self.cli.list_configs(name=NAME)[0]
         except IndexError:
             copy = self.cli.list_configs(name="empty")[0]
-            config = self.cli.create_config(name=NAME, copy_id=config["@id"])
+            config = self.cli.create_config(name=NAME, copy_id=copy["@id"])
         response = self.cli.delete_config(id=config['@id'])
         assert response.get('status') == '200'
 
@@ -167,6 +162,9 @@ class TestScanners(TestClientBase):
         except Exception as e:
             raise e
         response = self.cli.get_scanner(id=scanner["@id"])
+        assert response
+        assert response["@id"] == scanner["@id"]
+        assert response["name"] == scanner["name"]
 
 
 class TestReportFormats(TestClientBase):
@@ -209,6 +207,8 @@ class TestTasks(TestClientBase):
         response = self.cli.create_task(name=NAME,
                                         target_id=target["@id"],
                                         config_id=config["@id"])
+        assert response
+        assert response["@status"] == "201"
 
     def test_start_task(self):
         try:
@@ -290,6 +290,7 @@ class TestTasks(TestClientBase):
         assert response
         assert response["@status"] == "202"
 
+
 class TestReports(TestClientBase):
 
     def test_list_reports(self):
@@ -319,7 +320,7 @@ class TestReports(TestClientBase):
     def test_get_report(self):
         try:
             report = self.cli.list_reports()[0]
-        except:
+        except IndexError:
             # make task and report
             try:
                 task = self.cli.list_tasks(name=NAME)[0]
@@ -327,7 +328,8 @@ class TestReports(TestClientBase):
                 # create missing task
                 config = self.cli.list_configs(name="Host Discovery")[0]
                 try:
-                    target = self.cli.create_target(name=NAME, hosts="127.0.0.1")
+                    target = self.cli.create_target(name=NAME,
+                                                    hosts="127.0.0.1")
                 except exceptions.ClientError:
                     target = self.cli.list_targets(name=NAME)[0]
                 task = self.cli.create_task(name=NAME,
@@ -340,8 +342,6 @@ class TestReports(TestClientBase):
         response = self.cli.get_report(id=report["@id"])
         assert response and response["@status"] == "200"
         assert isinstance(response, dict)
-
-
 
         # response = self.cli.get_report(id=)
 
@@ -361,7 +361,7 @@ class TestReports(TestClientBase):
 #         #     pass
 #         pass
 
- # def test_create_report(self):
+# def test_create_report(self):
 #         target = self.cli.create_target(name=NAME, hosts="127.0.0.1")
 #         config = self.cli.get_config(name="Host Discovery")
 #         scanner = self.cli.get_scanner(name="OpenVAS Default")
@@ -395,7 +395,8 @@ class TestReports(TestClientBase):
 #                 "report": "<html></html>".encode('base64'),
 #             }
 #         )
-#         response = self.cli.create_report(report=report, task_name=NAME + "_test_report")
+#         response = self.cli.create_report(report=report,
+#                                           task_name=NAME + "_test_report")
 
 #         assert response["@status"] == "201"
 

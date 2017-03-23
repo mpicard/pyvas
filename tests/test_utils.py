@@ -2,9 +2,8 @@ from __future__ import unicode_literals, print_function
 
 import six
 import uuid
-import pytest
 from collections import OrderedDict
-from lxml import etree, objectify
+from lxml import etree
 
 from pyvas import utils
 
@@ -49,4 +48,3 @@ def test_xml_to_dict_function():
     assert result['request']['comment'] == 'comment'
     assert result['request']['copy']['@id'] == id
     assert result['request']['alterable'] == six.text_type(True)
-

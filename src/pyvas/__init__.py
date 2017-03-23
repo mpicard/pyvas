@@ -1,18 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-cloudcix-openvas
-================
-An OpenVAS Management Protocol (OMP) client interface for Python.
-"""
 
 import os
 import socket
 import ssl
 import six
 from lxml import etree
-from lxml.etree import (ElementTree, Element, SubElement)
-
+from lxml.etree import ElementTree, Element
 
 from .exceptions import (ClientError, ServerError, ResultError, AuthenticationError)
 from .utils import (dict_to_xml, xml_to_dict)
@@ -74,6 +68,7 @@ class Client(object):
     """
     OMP Targets
     """
+
     def list_targets(self, **kwargs):
         return self._list('targets', **kwargs)
 
@@ -87,7 +82,7 @@ class Client(object):
 
         request = dict_to_xml(
             "create_target",
-            {"name": name, "hosts": hosts, "comment": comment }
+            {"name": name, "hosts": hosts, "comment": comment}
         )
 
         return self._create(request)
@@ -102,6 +97,7 @@ class Client(object):
     """
     OMP Configs
     """
+
     def list_configs(self, **kwargs):
         return self._list('configs', **kwargs)
 
@@ -127,6 +123,7 @@ class Client(object):
     """
     OMP Scanners
     """
+
     def list_scanners(self, **kwargs):
         return self._list('scanners', **kwargs)
 
@@ -144,6 +141,7 @@ class Client(object):
     """
     OMP Report Format
     """
+
     def list_report_formats(self, **kwargs):
         # TODO: filtering kwargs
         return self._list('report_formats', **kwargs)
@@ -154,6 +152,7 @@ class Client(object):
     """
     OMP Tasks
     """
+
     def list_tasks(self, **kwargs):
         # TODO: kwarg filtering
         return self._list('tasks', **kwargs)
@@ -170,7 +169,7 @@ class Client(object):
             # Use default scanner
             try:
                 scanner_id = self.list_scanners(name="OpenVAS Default")[0]["@id"]
-            except exceptions.Error:
+            except ClientError:
                 raise ClientError("Could not find default scanner, please specify "
                                   "scanner with scanner_id")
 
@@ -195,7 +194,6 @@ class Client(object):
         request = Element("stop_task")
         return self._manage_task(request, id=id, name=name)
 
-
     def resume_task(self, id=None, name=None):
         request = Element("resume_task")
         return self._manage_task(request, id=id, name=name)
@@ -203,6 +201,7 @@ class Client(object):
     """
     OMP Reports
     """
+
     def list_reports(self, **kwargs):
         return self._list('reports', **kwargs)
 
@@ -250,7 +249,8 @@ class Client(object):
         response = self._command(request)
 
         if callback is None:
-            callback = lambda x: xml_to_dict(x).values()[0]
+            def callback(element):
+                return xml_to_dict(element).values()[0]
 
         return callback(response)
 
@@ -300,7 +300,8 @@ class Client(object):
         # print_xml(response)
 
         if callback is None:
-            callback = lambda x: xml_to_dict(x).values()[0]
+            def callback(element):
+                return xml_to_dict(element).values()[0]
 
         return callback(response.find(data_type))
 
@@ -311,8 +312,8 @@ class Client(object):
         request.set('id', kwargs.pop('id', ''))
 
         if kwargs is not {}:
-            # TODO: fix `v` fucking up filter values with spaces
-            filter_str = lambda k, v: "{}=\"{}\"".format(k, v)
+            def filter_str(k, v):
+                return "{}=\"{}\"".format(k, v)
             filters = [filter_str(k, v) for k, v in six.iteritems(kwargs) if v]
             if filters:
                 request.set("filter", " ".join(filters))
@@ -324,7 +325,8 @@ class Client(object):
         # print_xml(response)                           # TODO: remove b4 merge
 
         if callback is None:
-            callback = lambda x: xml_to_dict(x).values()[0]
+            def callback(element):
+                return xml_to_dict(element).values()[0]
 
         return [callback(element) for element in response]
 
@@ -352,7 +354,7 @@ class Client(object):
         """Generic function to manage tasks"""
         if id is None and name:
             task = self.list_tasks(name=name)
-            if len(tasks) == 0:
+            if len(task) == 0:
                 id = task[0]["@id"]
             else:
                 raise ClientError("404", "Could not find task")
@@ -375,7 +377,7 @@ class Client(object):
         else:
             if isinstance(request, six.text_type):
                 request = request.encode('utf-8')
-            self.socket.send(data)
+            self.socket.send(request)
 
         parser = etree.XMLTreeBuilder()
 

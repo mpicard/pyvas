@@ -37,7 +37,7 @@ setup(
     keywords="openvas omp client",
     packages=find_packages('src'),
     package_dir={'': 'src'},
-    py_modules=[splittext(basename(path))[0] for path in glob('src/*.py')],
+    py_modules=[splitext(basename(path))[0] for path in glob('src/*.py')],
     install_requires=['lxml'],
     setup_requires=['pytest-runner'],
     tests_require=['pytest', 'pytest-cov', 'coverage', 'tox'],
