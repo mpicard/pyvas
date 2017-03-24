@@ -8,6 +8,13 @@ from __future__ import unicode_literals, print_function
 import os
 import uuid
 import time
+import six
+import pytest
+from lxml import etree
+try:
+    from HTMLParser import HTMLParser
+except ImportError:
+    from html.parser import HTMLParser
 
 from pyvas import Client, exceptions
 
@@ -23,14 +30,26 @@ print("NAME = {}".format(NAME))
 print("=============\n")
 
 
+slow = pytest.mark.skipif(
+    not pytest.config.getoption("--slow"),
+    reason="need --slow option to run"
+)
+
+
+def test_environment():
+    __tracebackhide__ = True
+    if HOST is None:
+        pytest.fail("OpenVAS host required in env")
+    if USERNAME is None:
+        pytest.fail("OpenVAS username required in env")
+    if PASSWORD is None:
+        pytest.fail("OpenVAS password required in env")
+
+
 class TestClientBase(object):
     """Abstract TestUnit Base Class for Testing `Client` methods"""
     @classmethod
     def setup_class(cls):
-        assert HOST
-        assert USERNAME
-        assert PASSWORD
-
         cls.cli = Client(HOST, username=USERNAME, password=PASSWORD)
         cls.cli.open()
 
@@ -81,7 +100,8 @@ class TestTargets(TestClientBase):
         except exceptions.ClientError:  # Already exists
             target = self.cli.list_targets(name=NAME)[0]
         response = self.cli.delete_target(id=target['@id'])
-        assert response.get('status') == '200'
+        assert response and isinstance(response, dict)
+        assert response["@status"] == "200"
 
     @classmethod
     def teardown_class(cls):
@@ -131,7 +151,7 @@ class TestConfigs(TestClientBase):
             copy = self.cli.list_configs(name="empty")[0]
             config = self.cli.create_config(name=NAME, copy_id=copy["@id"])
         response = self.cli.delete_config(id=config['@id'])
-        assert response.get('status') == '200'
+        assert response["@status"] == '200'
 
     @classmethod
     def teardown_class(cls):
@@ -267,6 +287,11 @@ class TestTasks(TestClientBase):
         assert response["@id"] == task["@id"]
         assert response["name"] == task["name"]
 
+    def test_list_tasks(self):
+        response = self.cli.list_tasks()
+        assert response and isinstance(response, list)
+
+    @slow
     def test_resume_task(self):
         try:
             task = self.cli.list_tasks(name=NAME)[0]
@@ -290,11 +315,17 @@ class TestTasks(TestClientBase):
         assert response
         assert response["@status"] == "202"
 
+    def test_delete_task(self):
+        task = self.cli.list_tasks(name=NAME)[0]
+        response = self.cli.delete_task(id=task["@id"])
+        assert response and response["@status"] == "202"
+
 
 class TestReports(TestClientBase):
 
+    @slow
     def test_list_reports(self):
-        response = self.cli.list_reports()
+        response = self.cli.list_reports(task=NAME, owner=USERNAME)
         assert response
         assert isinstance(response, list)
         assert len(response) >= 1
@@ -317,9 +348,10 @@ class TestReports(TestClientBase):
     #     response = self.cli.create_report(report, task_id=task["@id"])
     #     assert response and response["@status"] == "201"
 
+    @slow
     def test_get_report(self):
         try:
-            report = self.cli.list_reports()[0]
+            report = self.cli.list_reports(task=NAME, owner=USERNAME)[0]
         except IndexError:
             # make task and report
             try:
@@ -343,75 +375,32 @@ class TestReports(TestClientBase):
         assert response and response["@status"] == "200"
         assert isinstance(response, dict)
 
-        # response = self.cli.get_report(id=)
+    def test_download_report_with_xml_format(self):
+        try:
+            report = self.cli.list_reports(task=NAME, owner=USERNAME)[0]
+        except IndexError:
+            assert False
+        response = self.cli.download_report(id=report["@id"])
+        assert etree.iselement(response)
+        assert response.attrib['id'] == report["@id"]
 
-# def test_client_as_context_manager():
-#     with Client(HOST, username=USERNAME, password=PASSWORD) as cli:
-#         configs = cli.list_configs()
-#         assert len(configs) > 2
+    def test_download_report_with_html_format(self):
+        try:
+            report = self.cli.list_reports(task=NAME, owner=USERNAME)[0]
+        except IndexError:
+            assert False
+        report_format = self.cli.list_report_formats(name="HTML")[0]
 
-
-# def test_client_exceptions():
-#     with Client(HOST, username=USERNAME, password=PASSWORD) as cli:
-#         # with pytest.raises(exceptions.ClientError):
-#         #     TODO: find something that returns HTTP 4xx
-#         #     pass
-#         # with pytest.raises(exceptions.ServerError):
-#         #     TODO: find something that returns HTTP 5xx
-#         #     pass
-#         pass
-
-# def test_create_report(self):
-#         target = self.cli.create_target(name=NAME, hosts="127.0.0.1")
-#         config = self.cli.get_config(name="Host Discovery")
-#         scanner = self.cli.get_scanner(name="OpenVAS Default")
-
-#         response = self.cli.create_task(name=NAME + "_test_report",
-#                                         target_id=target["@id"],
-#                                         config_id=config["@id"],
-#                                         scanner_id=scanner["@id"])
-#         task = self.cli.get_task(id=response["@id"])
-
-#         report_format = self.cli.get_report_format(name="HTML")
-
-#         report = utils.dict_to_xml(
-#             "report",
-#             {
-#                 "@id": str(uuid.uuid4()),
-#                 "@format_id": report_format["@id"],
-#                 "@extension": "html",
-#                 "@content_type": "text/html",
-#                 "@type": "scan",
-#                 "owner": {"name": USERNAME},
-#                 "name": datetime.datetime.now(),
-#                 "comment": "",
-#                 "creation_time": datetime.datetime.now(),
-#                 "modification_time": datetime.datetime.now(),
-#                 "writable": "0",
-#                 "in_use": "0",
-#                 "task": {"@id": task["@id"], "name": task["name"]},
-#                 "report_format": {"@id": report_format["@id"],
-#                                   "name": report_format["name"]},
-#                 "report": "<html></html>".encode('base64'),
-#             }
-#         )
-#         response = self.cli.create_report(report=report,
-#                                           task_name=NAME + "_test_report")
-
-#         assert response["@status"] == "201"
-
-#         with pytest.raises(ValueError):
-#             self.cli.create_report(report=123)
-#             self.cli.create_report(report={}, task_id="1", task_name="1")
-#             self.cli.create_report(report={}, in_assets="nope")
+        response = self.cli.download_report(id=report["@id"],
+                                            format_id=report_format["@id"])
+        assert isinstance(response, six.string_types)
+        parser = HTMLParser()
+        parser.feed(response)
+        parser.close()
+        assert parser
 
 
-#     def test_list_reports(self):
-#         response = self.cli.list_reports()
-#         assert response and isinstance(response, list)
-
-#     def test_get_report(self):
-#         reports = self.cli.list_reports()
-#         report = reports[0]["report"]
-#         response = self.cli.get_report(id=report["@id"])
-#         assert response and isinstance(response, dict)
+def test_client_as_context_manager():
+    with Client(HOST, username=USERNAME, password=PASSWORD) as cli:
+        configs = cli.list_configs()
+        assert len(configs) > 2

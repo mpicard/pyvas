@@ -16,7 +16,7 @@ from .utils import (dict_to_xml, xml_to_dict)
 DEFAULT_PORT = os.environ.get("OPENVASMD_PORT", 9390)
 
 
-def print_xml(response):
+def print_xml(response):  # pragma: no cover
     # TODO: remove before merge
     if isinstance(response, list):
         for item in response:
@@ -99,7 +99,6 @@ class Client(object):
     """
     OMP Configs
     """
-
     def list_configs(self, **kwargs):
         return self._list('configs', **kwargs)
 
@@ -125,7 +124,6 @@ class Client(object):
     """
     OMP Scanners
     """
-
     def list_scanners(self, **kwargs):
         return self._list('scanners', **kwargs)
 
@@ -143,7 +141,6 @@ class Client(object):
     """
     OMP Report Format
     """
-
     def list_report_formats(self, **kwargs):
         # TODO: filtering kwargs
         return self._list('report_formats', **kwargs)
@@ -154,7 +151,6 @@ class Client(object):
     """
     OMP Tasks
     """
-
     def list_tasks(self, **kwargs):
         # TODO: kwarg filtering
         return self._list('tasks', **kwargs)
@@ -203,48 +199,50 @@ class Client(object):
         request = Element("resume_task")
         return self._manage_task(request, id=id, name=name)
 
+    def delete_task(self, id):
+        return self._delete('task', id=id)
+
     """
     OMP Reports
     """
-
     def list_reports(self, **kwargs):
         return self._list('reports', **kwargs)
 
     def create_report(self, report, task_id=None, task_name=None,
                       task_comment=None, in_assets=True):
+        # try:
+        #     report = xml_to_dict(report)
+        # except TypeError:
+        #     if not isinstance(report, dict):
+        #         raise ValueError("report must be a ElementTree or a dict")
 
-        try:
-            report = xml_to_dict(report)
-        except TypeError:
-            if not isinstance(report, dict):
-                raise ValueError("report must be a ElementTree or a dict")
+        # try:
+        #     in_assets = int(in_assets)
+        # except TypeError:
+        #     raise ValueError("in_assets must be a Boolean")
 
-        try:
-            in_assets = int(in_assets)
-        except TypeError:
-            raise ValueError("in_assets must be a Boolean")
+        # command = {"report": report, "in_assets": int(in_assets)}
 
-        command = {"report": report, "in_assets": int(in_assets)}
+        # request = dict_to_xml("create_report", command)
 
-        request = dict_to_xml("create_report", command)
+        # if task_id is not None and task_name is None:
+        #     # task for report: id to use existing task
+        #     task = dict_to_xml("task", {"@id": task_id})
+        # elif task_name is not None and task_id is None:
+        #     # task for report: name to create new task
+        #     task = {"name": task_name}
+        #     if task_comment is not None:
+        #         task.update({"comment": task_comment})
+        #     task = dict_to_xml("task", task)
+        # elif task_name is None and task_id is None:
+        #     raise ValueError("You must use either task_id or task_name")
 
-        if task_id is not None and task_name is None:
-            # task for report: id to use existing task
-            task = dict_to_xml("task", {"@id": task_id})
-        elif task_name is not None and task_id is None:
-            # task for report: name to create new task
-            task = {"name": task_name}
-            if task_comment is not None:
-                task.update({"comment": task_comment})
-            task = dict_to_xml("task", task)
-        elif task_name is None and task_id is None:
-            raise ValueError("You must use either task_id or task_name")
+        # request.append(task)
 
-        request.append(task)
+        # response = self._create(request)
 
-        response = self._create(request)
-
-        return response
+        # return response
+        raise NotImplemented
 
     def get_report(self, id, callback=None, **kwargs):
         request = Element('get_reports')
@@ -255,24 +253,35 @@ class Client(object):
 
         if callback is None:
             def callback(element):
-                return xml_to_dict(element).values()[0]
+                return list(xml_to_dict(element).values())[0]
 
         return callback(response)
 
-    def download_report(self, id):
+    def download_report(self, id, format_id=None, as_element_tree=False):
         """Get XML or base64 encoded report contents"""
-        report = self.get_report(id=id)
-        # print(report)
-        if report["@content_type"] == "text/xml":
-            # TODO: return report contents
+        # TODO: download by format (with id or name?)
+        request = Element('get_reports')
+
+        request.set('report_id', id)
+
+        if format_id is not None:
+            request.set('format_id', format_id)
+
+        response = self._command(request)
+
+        report = response.find('report')
+
+        if report.attrib['content_type'] == 'text/xml' or as_element_tree:
             return report
-        # TODO: investigate why the tail is the content and not the text
-        return report.find('.//report_format').tail.decode('base64')
+        report = response.find('.//report_format').tail
+        try:
+            return report.decode('base64')
+        except AttributeError:
+            return report
 
     """
     Client internal methods
     """
-
     def _command(self, request):
         response = self._send_request(request)
         self._validate_response(response)
@@ -307,7 +316,7 @@ class Client(object):
 
         if callback is None:
             def callback(element):
-                return xml_to_dict(element).values()[0]
+                return list(xml_to_dict(element).values())[0]
 
         return callback(response.find(data_type))
 
@@ -315,7 +324,7 @@ class Client(object):
         """Generic list function"""
         request = Element('get_{}'.format(data_type))
 
-        request.set('id', kwargs.pop('id', ''))
+        request.set('{}_id'.format(data_type), kwargs.pop('id', ''))
 
         if kwargs is not {}:
             def filter_str(k, v):
@@ -327,12 +336,9 @@ class Client(object):
         # send request and grab all data_type elements using lxml `findall`
         response = self._command(request).findall(data_type[:-1])
 
-        # print_xml(request)                            # TODO: remove b4 merge
-        # print_xml(response)                           # TODO: remove b4 merge
-
         if callback is None:
             def callback(element):
-                return xml_to_dict(element).values()[0]
+                return list(xml_to_dict(element).values())[0]
 
         return [callback(element) for element in response]
 
@@ -340,21 +346,25 @@ class Client(object):
         """generic create function"""
         response = self._command(request)
 
-        # print_xml(response)
-
         try:
             # convert to dict and trim unwanted root element
-            return xml_to_dict(response).values()[0]
+            return list(xml_to_dict(response).values())[0]
         except Exception as e:
             raise ResultError(response.tag, e)
 
-    def _delete(self, data_type, id):
+    def _delete(self, data_type, id, callback=None):
         """Generic delete function"""
         request = Element('delete_{}'.format(data_type))
 
         request.set('{}_id'.format(data_type), id)
 
-        return self._command(request)
+        response = self._command(request)
+
+        if callback is None:
+            def callback(element):
+                return list(xml_to_dict(element).values())[0]
+
+        return callback(response)
 
     def _manage_task(self, request, id=None, name=None):
         """Generic function to manage tasks"""
@@ -369,7 +379,7 @@ class Client(object):
 
         response = self._command(request)
 
-        return xml_to_dict(response).values()[0]
+        return list(xml_to_dict(response).values())[0]
 
     def _send_request(self, request):
         """Send XML data to OpenVAS Manager and get results"""

@@ -2,6 +2,8 @@ from __future__ import unicode_literals, print_function
 
 import six
 import uuid
+import pytest
+
 from collections import OrderedDict
 from lxml import etree
 
@@ -31,6 +33,9 @@ def test_dict_to_xml_function():
 
     assert etree.tostring(result) == etree.tostring(expect)
 
+    with pytest.raises(TypeError):
+        utils.dict_to_xml(1)
+
 
 def test_xml_to_dict_function():
     id = str(uuid.uuid4())[:40]
@@ -48,3 +53,6 @@ def test_xml_to_dict_function():
     assert result['request']['comment'] == 'comment'
     assert result['request']['copy']['@id'] == id
     assert result['request']['alterable'] == six.text_type(True)
+
+    with pytest.raises(TypeError):
+        utils.xml_to_dict(1)
