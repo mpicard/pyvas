@@ -17,7 +17,7 @@ from setuptools import find_packages
 
 setup(
     name="pyvas",
-    version="0.0.1.dev1",
+    version="0.0.2.dev1",
     description="An OpenVAS Managment Protocol (OMP) client for Python",
     url="https://github.com/mpicard/pyvas",
     author="Martin Picard",
