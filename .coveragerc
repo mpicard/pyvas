@@ -1,0 +1,12 @@
+[paths]
+source = 
+    src
+
+[run]
+branch = true
+source = tests
+parallel = true
+
+[report]
+show_missing = true
+omit = *migrations*

@@ -331,23 +331,6 @@ class TestReports(TestClientBase):
         assert len(response) >= 1
         assert isinstance(response[0], dict)
 
-    # def test_create_report(self):
-    #     try:
-    #         task = self.cli.list_tasks(name=NAME)[0]
-    #     except IndexError:
-    #         # create missing task
-    #         config = self.cli.list_configs(name="Host Discovery")[0]
-    #         try:
-    #             target = self.cli.create_target(name=NAME, hosts="127.0.0.1")
-    #         except exceptions.ClientError:
-    #             target = self.cli.list_targets(name=NAME)[0]
-    #         task = self.cli.create_task(name=NAME,
-    #                                     target_id=target["@id"],
-    #                                     config_id=config["@id"])
-    #     report = {'test': 'test'}
-    #     response = self.cli.create_report(report, task_id=task["@id"])
-    #     assert response and response["@status"] == "201"
-
     @slow
     def test_get_report(self):
         try:

@@ -1,5 +1,16 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+"""
+OpenVAS Manager Protocol v7 Client
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+"""
+
+__title__ = "pyvas"
+__version__ = "0.0.1dev1"
+__author__ = "Martin Picard"
+__license__ = "MIT"
+__copyright__ = "Copyright 2016 Martin Picard"
 
 import os
 import socket

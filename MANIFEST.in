@@ -1,6 +1,7 @@
 include README.rst
 include LICENSE
 include tox.ini
+include .coveragerc
 
 recursive-include src * 
 recursive-include tests *
