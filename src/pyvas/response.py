@@ -35,7 +35,7 @@ class Response(dict):
         self.request = req
         try:
             if callback is None:
-                self.data = lxml_to_dict(resp).values()[0]
+                self.data = list(lxml_to_dict(resp).values())[0]
             else:
                 self.data = callback(resp)
         except (KeyError, TypeError):
