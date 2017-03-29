@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 """
 Tests for pyvas Client
 ======================
@@ -19,9 +19,9 @@ except ImportError:
 from pyvas import Client, exceptions
 
 
-HOST = os.environ.get('OPENVAS_HOST')
-USERNAME = os.environ.get('OPENVAS_USER')
-PASSWORD = os.environ.get('OPENVAS_PASSWORD')
+HOST = os.environ.get("OPENVAS_HOST")
+USERNAME = os.environ.get("OPENVAS_USER")
+PASSWORD = os.environ.get("OPENVAS_PASSWORD")
 NAME = str(uuid.uuid4())[:6]
 
 
@@ -46,8 +46,23 @@ def test_environment():
         pytest.fail("OpenVAS password required in env")
 
 
+def test_client_as_context_manager():
+    with Client(HOST, username=USERNAME, password=PASSWORD) as cli:
+        configs = cli.list_configs()
+        assert len(configs) > 2
+
+
+def test_client_authenticate_error():
+    cli = Client(HOST)
+    cli.socket = None
+
+    with pytest.raises(exceptions.AuthenticationError):
+        cli.authenticate(username=USERNAME, password="fake")
+
+
 class TestClientBase(object):
     """Abstract TestUnit Base Class for Testing `Client` methods"""
+
     @classmethod
     def setup_class(cls):
         cls.cli = Client(HOST, username=USERNAME, password=PASSWORD)
@@ -61,56 +76,45 @@ class TestClientBase(object):
 class TestTargets(TestClientBase):
 
     def test_create_target(self):
-        response = self.cli.create_target(name=NAME, hosts="127.0.0.1")
-        assert response and isinstance(response, dict)
-        assert response['@status'] == '201'
+        response = self.cli.create_target(name=NAME, hosts="127.0.0.1", comment="test")
+        assert response.ok and response.status_code == 201
 
     def test_list_target(self):
         try:
-            self.cli.create_target(name=NAME, hosts='127.0.0.1')
-        except exceptions.ClientError:  # Already exists
+            self.cli.create_target(name=NAME, hosts="127.0.0.1")
+        except exceptions.ElementExists:
             pass
         response = self.cli.list_targets()
         assert response and isinstance(response, list)
 
-        assert [target for target in response if target['name'] == NAME]
+        assert [target for target in response if target["name"] == NAME]
 
     def test_list_filter_target(self):
         try:
-            self.cli.create_target(name=NAME, hosts='127.0.0.1')
-        except exceptions.ClientError:  # Already exists
+            self.cli.create_target(name=NAME, hosts="127.0.0.1")
+        except exceptions.ElementExists:
             pass
         response = self.cli.list_targets(name=NAME)
-        assert response[0]['name'] == NAME
-        assert response[0]['hosts'] == '127.0.0.1'
+        assert response[0]["name"] == NAME
+        assert response[0]["hosts"] == "127.0.0.1"
 
     def test_get_target(self):
         try:
-            target = self.cli.create_target(name=NAME, hosts='127.0.0.1')
-        except exceptions.ClientError:  # Already exists
+            target = self.cli.create_target(name=NAME, hosts="127.0.0.1")
+        except exceptions.ElementExists:
             target = self.cli.list_targets(name=NAME)[0]
         response = self.cli.get_target(id=target["@id"])
-        assert isinstance(response, dict)
+        assert response.ok
         assert target["name"] == response["name"]
         assert target["@id"] == response["@id"]
 
     def test_delete_target(self):
         try:
-            target = self.cli.create_target(name=NAME, hosts='127.0.0.1')
-        except exceptions.ClientError:  # Already exists
+            target = self.cli.create_target(name=NAME, hosts="127.0.0.1")
+        except exceptions.ElementExists:
             target = self.cli.list_targets(name=NAME)[0]
-        response = self.cli.delete_target(id=target['@id'])
-        assert response and isinstance(response, dict)
-        assert response["@status"] == "200"
-
-    @classmethod
-    def teardown_class(cls):
-        try:
-            target = cls.cli.list_targets(name=NAME)[0]
-            cls.cli.delete_target(id=target["@id"])
-        except IndexError:  # already deleted
-            pass
-        super(TestTargets, cls).teardown_class()
+        response = self.cli.delete_target(id=target["@id"])
+        assert response.ok
 
 
 class TestConfigs(TestClientBase):
@@ -118,8 +122,7 @@ class TestConfigs(TestClientBase):
     def test_create_config(self):
         copy = self.cli.list_configs(name="empty")[0]
         response = self.cli.create_config(name=NAME, copy_id=copy["@id"])
-        assert response["@status"] == "201"
-        assert response["@id"]
+        assert response.ok
 
     def test_list_config(self):
         response = self.cli.list_configs()
@@ -150,8 +153,8 @@ class TestConfigs(TestClientBase):
         except IndexError:
             copy = self.cli.list_configs(name="empty")[0]
             config = self.cli.create_config(name=NAME, copy_id=copy["@id"])
-        response = self.cli.delete_config(id=config['@id'])
-        assert response["@status"] == '200'
+        response = self.cli.delete_config(id=config["@id"])
+        assert response["@status"] == "200"
 
     @classmethod
     def teardown_class(cls):
@@ -206,8 +209,6 @@ class TestReportFormats(TestClientBase):
     def test_get_report_format(self):
         report_format = self.cli.list_report_formats(name="PDF")[0]
         response = self.cli.get_report_format(id=report_format["@id"])
-        # print(report_format)
-        # print(response)
         assert report_format
         assert response
         assert response["@id"] == report_format["@id"]
@@ -221,14 +222,19 @@ class TestTasks(TestClientBase):
         config = self.cli.list_configs(name="Host Discovery")[0]
         try:
             target = self.cli.create_target(name=NAME, hosts="127.0.0.1")
-        except exceptions.ClientError:
+        except exceptions.ElementExists:
             target = self.cli.list_targets(name=NAME)[0]
 
         response = self.cli.create_task(name=NAME,
                                         target_id=target["@id"],
                                         config_id=config["@id"])
         assert response
-        assert response["@status"] == "201"
+        assert response.ok
+
+    def test_list_tasks(self):
+        response = self.cli.list_tasks()
+        assert response and isinstance(response, list)
+        assert len(response)
 
     def test_start_task(self):
         try:
@@ -238,16 +244,19 @@ class TestTasks(TestClientBase):
             config = self.cli.list_configs(name="Host Discovery")[0]
             try:
                 target = self.cli.create_target(name=NAME, hosts="127.0.0.1")
-            except exceptions.ClientError:
+            except exceptions.ElementExists:
                 target = self.cli.list_targets(name=NAME)[0]
             task = self.cli.create_task(name=NAME,
                                         target_id=target["@id"],
                                         config_id=config["@id"])
-
-        response = self.cli.start_task(id=task["@id"])
-        assert response
-        assert response["@status"] == "202"
-        assert response["report_id"]
+        try:
+            response = self.cli.start_task(id=task["@id"])
+            assert response
+            assert response["@status"] == "202"
+            assert response["report_id"]
+        except exceptions.HTTPError as e:
+            if "active already" in e.response.reason:
+                pass
 
     def test_stop_task(self):
         try:
@@ -257,7 +266,7 @@ class TestTasks(TestClientBase):
             config = self.cli.list_configs(name="Host Discovery")[0]
             try:
                 target = self.cli.create_target(name=NAME, hosts="127.0.0.1")
-            except exceptions.ClientError:
+            except exceptions.ElementExists:
                 target = self.cli.list_targets(name=NAME)[0]
             task = self.cli.create_task(name=NAME,
                                         target_id=target["@id"],
@@ -275,7 +284,7 @@ class TestTasks(TestClientBase):
             config = self.cli.list_configs(name="Host Discovery")[0]
             try:
                 target = self.cli.create_target(name=NAME, hosts="127.0.0.1")
-            except exceptions.ClientError:
+            except exceptions.ElementExists:
                 target = self.cli.list_targets(name=NAME)[0]
             task = self.cli.create_task(name=NAME,
                                         target_id=target["@id"],
@@ -287,10 +296,6 @@ class TestTasks(TestClientBase):
         assert response["@id"] == task["@id"]
         assert response["name"] == task["name"]
 
-    def test_list_tasks(self):
-        response = self.cli.list_tasks()
-        assert response and isinstance(response, list)
-
     @slow
     def test_resume_task(self):
         try:
@@ -300,11 +305,16 @@ class TestTasks(TestClientBase):
             config = self.cli.list_configs(name="Host Discovery")[0]
             try:
                 target = self.cli.create_target(name=NAME, hosts="127.0.0.1")
-            except exceptions.ClientError:
+            except exceptions.ElementExists:
                 target = self.cli.list_targets(name=NAME)[0]
             task = self.cli.create_task(name=NAME,
                                         target_id=target["@id"],
                                         config_id=config["@id"])
+        try:
+            self.cli.start_task(id=task["@id"])
+        except exceptions.HTTPError as e:
+            if "active already" in e.response.reason:
+                pass
 
         while True:
             response = self.cli.get_task(id=task["@id"])
@@ -312,13 +322,32 @@ class TestTasks(TestClientBase):
                 break
             time.sleep(2)
         response = self.cli.resume_task(id=task["@id"])
-        assert response
+        assert response and response.ok and response.status_code == 202
         assert response["@status"] == "202"
 
+    @slow
     def test_delete_task(self):
-        task = self.cli.list_tasks(name=NAME)[0]
+        try:
+            task = self.cli.list_tasks(name=NAME)[0]
+        except IndexError:
+            # create missing task
+            config = self.cli.list_configs(name="Host Discovery")[0]
+            try:
+                target = self.cli.create_target(name=NAME, hosts="127.0.0.1")
+            except exceptions.ElementExists:
+                target = self.cli.list_targets(name=NAME)[0]
+            task = self.cli.create_task(name=NAME,
+                                        target_id=target["@id"],
+                                        config_id=config["@id"])
+
+        while True:
+            response = self.cli.get_task(id=task["@id"])
+            if response["status"] in ("Done", "Stopped"):
+                break
+            time.sleep(2)
         response = self.cli.delete_task(id=task["@id"])
-        assert response and response["@status"] == "202"
+        assert response and response.ok and response.status_code == 200
+        assert response["@status"] == "200"
 
 
 class TestReports(TestClientBase):
@@ -345,19 +374,19 @@ class TestReports(TestClientBase):
                 try:
                     target = self.cli.create_target(name=NAME,
                                                     hosts="127.0.0.1")
-                except exceptions.ClientError:
+                except exceptions.ElementExists:
                     target = self.cli.list_targets(name=NAME)[0]
                 task = self.cli.create_task(name=NAME,
                                             target_id=target["@id"],
                                             config_id=config["@id"])
-            content = {'test': 'test'}
+            content = {"test": "test"}
             report = self.cli.create_report(content, task_id=task["@id"])
             assert report and report["@status"] == "201"
 
         response = self.cli.get_report(id=report["@id"])
-        assert response and response["@status"] == "200"
-        assert isinstance(response, dict)
+        assert response.ok and response.status_code == 200
 
+    @slow
     def test_download_report_with_xml_format(self):
         try:
             report = self.cli.list_reports(task=NAME, owner=USERNAME)[0]
@@ -365,8 +394,9 @@ class TestReports(TestClientBase):
             assert False
         response = self.cli.download_report(id=report["@id"])
         assert etree.iselement(response)
-        assert response.attrib['id'] == report["@id"]
+        assert response.attrib["id"] == report["@id"]
 
+    @slow
     def test_download_report_with_html_format(self):
         try:
             report = self.cli.list_reports(task=NAME, owner=USERNAME)[0]
@@ -383,7 +413,20 @@ class TestReports(TestClientBase):
         assert parser
 
 
-def test_client_as_context_manager():
-    with Client(HOST, username=USERNAME, password=PASSWORD) as cli:
-        configs = cli.list_configs()
-        assert len(configs) > 2
+class TestSchedules(TestClientBase):
+
+    def test_create_schedule(self):
+        # TODO
+        pass
+
+    def test_list_schedules(self):
+        # TODO
+        pass
+
+    def test_delete_schedule(self):
+        # TODO
+        pass
+
+    def test_update_schedule(self):
+        # TODO
+        pass

@@ -13,7 +13,7 @@ To install pyvas, simply run:
 .. code-block:: bash
     $ pip install pyvas
 
-Profit.
+
 
 Documentation
 -------------

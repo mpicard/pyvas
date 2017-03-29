@@ -1,38 +1,45 @@
 # -*- coding: utf-8 -*-
+"""
+pyvas exceptions
+~~~~~~~~~~~~~~~~
+"""
+from __future__ import unicode_literals, print_function
 
 
 class Error(Exception):
-    """Base Error Class"""
-
-    def __str__(self):
-        return repr(self)
-
-
-class _ResponseError(Error):
-    """OMP response error"""
-    def __init__(self, cmd, *args):
-        if cmd.endswith('_response'):
-            cmd = cmd[:-9]
-        super(_ResponseError, self).__init__(cmd, *args)
-
-    def __str__(self):
-        return '[Http {1}] {0}: {2}'.format(*self.args)
-
-
-class ClientError(_ResponseError):
-    """Command failed due to client"""
-
-
-class ServerError(_ResponseError):
-    """Command failed due to openvas manager"""
+    """PyVAS Base Exception."""
 
 
 class ResultError(Error):
-    """Invalid response from Server"""
+    """Invalid response from Server."""
 
     def __str__(self):
-        return 'Invalid result: response from %s is invalid: %s' % self.args
+        return "Invalid result: response from %s is invalid: %s" % self.args
 
 
 class AuthenticationError(Error):
     """Authentication Failed"""
+
+
+class RequestError(IOError):
+    """There was an ambiguous exception that occured while handling you
+    request.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """Initialize RequestError with `request` and `response` objects."""
+        self.response = kwargs.pop("response", None)
+        self.request = kwargs.pop("request", None)
+        if (self.response is not None and
+                not self.request and
+                hasattr(self.response, "request")):
+            self.request = self.response.request
+        super(RequestError, self).__init__(*args, **kwargs)
+
+
+class HTTPError(RequestError):
+    """An HTTP error occured."""
+
+
+class ElementExists(HTTPError):
+    """Attempt to create an element that already exists."""

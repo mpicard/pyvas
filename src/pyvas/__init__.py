@@ -5,12 +5,14 @@ OpenVAS Manager Protocol v7 Client
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 """
+from __future__ import unicode_literals, print_function
 
 __title__ = "pyvas"
 __version__ = "0.0.2"
 __author__ = "Martin Picard"
 __license__ = "MIT"
 __copyright__ = "Copyright 2016 Martin Picard"
+
 
 import os
 import socket
@@ -19,30 +21,27 @@ import six
 from lxml import etree
 from lxml.etree import ElementTree, Element
 
-from .exceptions import (ClientError, ServerError, ResultError,
-                         AuthenticationError)
-from .utils import (dict_to_xml, xml_to_dict)
+from .response import Response
+from .utils import (dict_to_lxml, lxml_to_dict)
+from .exceptions import AuthenticationError, HTTPError
 
 
 DEFAULT_PORT = os.environ.get("OPENVASMD_PORT", 9390)
 
 
 def print_xml(response):  # pragma: no cover
-    # TODO: remove before merge
+    """Debugging print"""
     if isinstance(response, list):
         for item in response:
-            print("")
-            print(etree.tostring(item, pretty_print=True))
+            print("\n" + etree.tostring(item, pretty_print=True))
     else:
-        print("\n")
-        print(etree.tostring(response, pretty_print=True))
+        print("\n" + etree.tostring(response, pretty_print=True))
 
 
 class Client(object):
     """OpenVAS OMP Client"""
 
-    def __init__(self, host, port=DEFAULT_PORT, username=None, password=None):
-
+    def __init__(self, host, username=None, password=None, port=DEFAULT_PORT):
         self.host = host
         self.port = port
         self.username = username
@@ -61,39 +60,45 @@ class Client(object):
         self.socket = None
 
     def authenticate(self, username=None, password=None):
-        """Authenticate Client"""
+        """Authenticate Client using username and password."""
+        if self.socket is None:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket = sock = ssl.wrap_socket(sock)
+            sock.connect((self.host, self.port))
+
         if username is None:
             username = self.username
 
         if password is None:
             password = self.password
 
-        request = dict_to_xml(
+        request = dict_to_lxml(
             "authenticate",
-            {"credentials": {"username": username, "password": password}}
+            {"credentials": {
+                "username": username,
+                "password": password
+            }}
         )
 
         try:
-            self._command(request)
-        except ClientError:
+            return self._command(request)
+        except HTTPError:
             raise AuthenticationError(username)
 
     """
     OMP Targets
     """
-
     def list_targets(self, **kwargs):
-        return self._list('targets', **kwargs)
+        return self._list("targets", **kwargs)
 
     def get_target(self, id):
-        return self._get('target', id=id)
+        return self._get("target", id=id)
 
     def create_target(self, name, hosts, comment=None):
-        # TODO: validate hosts
         if comment is None:
             comment = ""
 
-        request = dict_to_xml(
+        request = dict_to_lxml(
             "create_target",
             {"name": name, "hosts": hosts, "comment": comment}
         )
@@ -101,25 +106,33 @@ class Client(object):
         return self._create(request)
 
     def update_target(self, name, hosts, comment=None):
-        # TODO
-        raise NotImplemented
+
+        if comment is None:
+            comment = ""
+
+        request = dict_to_lxml(
+            "modify_target",
+            {}
+        )
+
+        return self._update(request)
 
     def delete_target(self, id):
-        return self._delete('target', id=id)
+        return self._delete("target", id=id)
 
     """
     OMP Configs
     """
     def list_configs(self, **kwargs):
-        return self._list('configs', **kwargs)
+        return self._list("configs", **kwargs)
 
     def get_config(self, id):
-        return self._get('config', id=id)
+        return self._get("config", id=id)
 
     def create_config(self, name, copy_id=None, config=None, *args, **kwargs):
         if config:
             raise NotImplemented("Config response copying not supported yet")
-        request = dict_to_xml(
+        request = dict_to_lxml(
             "create_config",
             {"name": name, "copy": copy_id}
         )
@@ -127,51 +140,49 @@ class Client(object):
 
     def update_config(self, *args, **kwargs):
         # TODO
-        raise NotImplemented
+        raise NotImplementedError
 
     def delete_config(self, id):
-        return self._delete('config', id=id)
+        return self._delete("config", id=id)
 
     """
     OMP Scanners
     """
     def list_scanners(self, **kwargs):
-        return self._list('scanners', **kwargs)
+        return self._list("scanners", **kwargs)
 
     def get_scanner(self, id):
-        return self._get('scanner', id=id)
+        return self._get("scanner", id=id)
 
     def create_scanner(self, *args, **kwargs):
         # TODO
-        raise NotImplemented
+        raise NotImplementedError
 
     def delete_scanner(self, id):
         # TODO
-        raise NotImplemented
+        raise NotImplementedError
 
     """
     OMP Report Format
     """
     def list_report_formats(self, **kwargs):
         # TODO: filtering kwargs
-        return self._list('report_formats', **kwargs)
+        return self._list("report_formats", **kwargs)
 
     def get_report_format(self, id):
-        return self._get('report_format', id=id)
+        return self._get("report_format", id=id)
 
     """
     OMP Tasks
     """
     def list_tasks(self, **kwargs):
         # TODO: kwarg filtering
-        return self._list('tasks', **kwargs)
+        return self._list("tasks", **kwargs)
 
     def get_task(self, id):
-        return self._get('task', id=id)
+        return self._get("task", id=id)
 
-    def create_task(self, name, config_id, target_id, scanner_id=None,
-                    comment=None):
-        # TODO: finish spec
+    def create_task(self, name, config_id, target_id, scanner_id=None, comment=None):
         if comment is None:
             comment = ""
 
@@ -181,17 +192,16 @@ class Client(object):
                 scanner_id = self.list_scanners(
                     name="OpenVAS Default"
                 )[0]["@id"]
-            except (ClientError, IndexError):
-                raise ClientError("Could not find default scanner, please "
-                                  "specify scanner with scanner_id")
+            except (HTTPError, IndexError):
+                raise HTTPError()
 
-        request = dict_to_xml(
+        request = dict_to_lxml(
             "create_task",
             {
                 "name": name,
-                "config": [('id', config_id)],
-                "target": [('id', target_id)],
-                "scanner": [('id', scanner_id)],
+                "config": [("id", config_id)],
+                "target": [("id", target_id)],
+                "scanner": [("id", scanner_id)],
                 "comment": comment,
             }
         )
@@ -211,131 +221,128 @@ class Client(object):
         return self._manage_task(request, id=id, name=name)
 
     def delete_task(self, id):
-        return self._delete('task', id=id)
+        return self._delete("task", id=id)
 
     """
     OMP Reports
     """
     def list_reports(self, **kwargs):
-        return self._list('reports', **kwargs)
+        return self._list("reports", **kwargs)
 
     def create_report(self, report, task_id=None, task_name=None,
                       task_comment=None, in_assets=True):
-        # try:
-        #     report = xml_to_dict(report)
-        # except TypeError:
-        #     if not isinstance(report, dict):
-        #         raise ValueError("report must be a ElementTree or a dict")
+        raise NotImplementedError
 
-        # try:
-        #     in_assets = int(in_assets)
-        # except TypeError:
-        #     raise ValueError("in_assets must be a Boolean")
-
-        # command = {"report": report, "in_assets": int(in_assets)}
-
-        # request = dict_to_xml("create_report", command)
-
-        # if task_id is not None and task_name is None:
-        #     # task for report: id to use existing task
-        #     task = dict_to_xml("task", {"@id": task_id})
-        # elif task_name is not None and task_id is None:
-        #     # task for report: name to create new task
-        #     task = {"name": task_name}
-        #     if task_comment is not None:
-        #         task.update({"comment": task_comment})
-        #     task = dict_to_xml("task", task)
-        # elif task_name is None and task_id is None:
-        #     raise ValueError("You must use either task_id or task_name")
-
-        # request.append(task)
-
-        # response = self._create(request)
-
-        # return response
-        raise NotImplemented
-
-    def get_report(self, id, callback=None, **kwargs):
-        request = Element('get_reports')
-
-        request.set('report_id', id)
-
-        response = self._command(request)
-
-        if callback is None:
-            def callback(element):
-                return list(xml_to_dict(element).values())[0]
-
-        return callback(response)
+    def get_report(self, id, **kwargs):
+        return self._get('report', id=id)
 
     def download_report(self, id, format_id=None, as_element_tree=False):
         """Get XML or base64 encoded report contents"""
-        # TODO: download by format (with id or name?)
-        request = Element('get_reports')
+        request = Element("get_reports")
 
-        request.set('report_id', id)
+        request.set("report_id", id)
 
         if format_id is not None:
-            request.set('format_id', format_id)
+            request.set("format_id", format_id)
 
         response = self._command(request)
 
-        report = response.find('report')
+        report = response.xml.find("report")
 
-        if report.attrib['content_type'] == 'text/xml' or as_element_tree:
+        if report.attrib["content_type"] == "text/xml" or as_element_tree:
             return report
-        report = response.find('.//report_format').tail
+        report = response.find(".//report_format").tail
         try:
-            return report.decode('base64')
+            return report.decode("base64")
         except AttributeError:
             return report
 
     """
+    OMP Schedules
+    """
+    def list_schedules(self, **kwargs):
+        return self._list("schedules", **kwargs)
+
+    def create_schedule(self, name, comment=None, copy=None, first_time=None,
+                        duration=None, period=None, timezone=None):
+        """Create an OpenVAS task schedule"""
+        if comment is None:
+            comment = ""
+
+        data = {
+            "name": name,
+            "comment": comment
+        }
+
+        if copy is not None:
+            data["copy"] = copy
+
+        if first_time is not None:
+            data["first_time"] = {
+                "minute": first_time.get("minute"),
+                "hour": first_time.get("hour"),
+                "day_of_month": first_time.get("day_of_month"),
+                "year": first_time.get("year")
+            }
+
+        if duration is not None:
+            data["duration"] = {
+                "text": duration.get("duration"),
+                "unit": duration.get("unit")
+            }
+
+        if period is not None:
+            data["period"] = {
+                "text": period.get("period"),
+                "unit": period.get("unit")
+            }
+
+        if timezone is not None:
+            data["timezone"] = timezone
+
+        request = dict_to_lxml("create_schedule", data)
+
+        return self._create(request)
+
+    def get_schedule(self, id, **kwargs):
+        return self._get('schedule', id=id)
+
+    def update_schedule(self):
+        raise NotImplementedError
+
+    def delete_schedule(self, id):
+        return self._delete('schedule', id=id)
+
+    """
     Client internal methods
     """
-    def _command(self, request):
-        response = self._send_request(request)
-        self._validate_response(response)
+    def _command(self, request, callback=None):
+        """Send, build and validate reponse"""
+        resp = self._send_request(request)
+
+        response = Response(req=request, resp=resp, callback=callback)
+        # validate response, raise exceptions, if any
+        response.raise_for_status()
+
         return response
-
-    def _validate_response(self, response):
-        status = response.get('status')
-        status_text = response.get('status_text')
-
-        if status is None:
-            raise ResultError("Response is missing status code: %s"
-                              % etree.tostring(response))
-
-        if status.startswith('4'):
-            # print(status, status_text)
-            raise ClientError(response.tag, status, status_text)
-
-        elif status.startswith('5'):
-            # print(status, status_text)
-            raise ServerError(response.tag, status, status_text)
 
     def _get(self, data_type, id, callback=None, **kwargs):
         """Generic get function"""
-        # TODO: improve logic, resusability with _list()
-        request = Element('get_{}s'.format(data_type))
+        request = Element("get_{}s".format(data_type))
 
-        request.set('{}_id'.format(data_type), id)
-
-        response = self._command(request)
-        # print_xml(request)
-        # print_xml(response)
+        request.set("{}_id".format(data_type), id)
 
         if callback is None:
-            def callback(element):
-                return list(xml_to_dict(element).values())[0]
+            def callback(response):
+                return list(lxml_to_dict(response.find(data_type)).values())[0]
 
-        return callback(response.find(data_type))
+        return self._command(request, callback)
 
     def _list(self, data_type, callback=None, **kwargs):
         """Generic list function"""
-        request = Element('get_{}'.format(data_type))
+        request = Element("get_{}".format(data_type))
 
-        request.set('{}_id'.format(data_type), kwargs.pop('id', ''))
+        request.set("{}_id".format(data_type), kwargs.pop("id", ""))
 
         if kwargs is not {}:
             def filter_str(k, v):
@@ -344,53 +351,43 @@ class Client(object):
             if filters:
                 request.set("filter", " ".join(filters))
 
+        response = self._command(request)
         # send request and grab all data_type elements using lxml `findall`
-        response = self._command(request).findall(data_type[:-1])
+        items = response.xml.findall(data_type[:-1])
 
         if callback is None:
             def callback(element):
-                return list(xml_to_dict(element).values())[0]
+                return list(lxml_to_dict(element).values())[0]
 
-        return [callback(element) for element in response]
+        return [callback(element) for element in items]
 
-    def _create(self, request, id_tag=None):
+    def _create(self, request):
         """generic create function"""
-        response = self._command(request)
+        return self._command(request)
 
-        try:
-            # convert to dict and trim unwanted root element
-            return list(xml_to_dict(response).values())[0]
-        except Exception as e:
-            raise ResultError(response.tag, e)
+    def _update(self, data_type, **kwargs):
+        """Generic update function"""
+        request = dict_to_lxml("modify_{}".format(data_type), kwargs)
+
+        return self._command(request)
 
     def _delete(self, data_type, id, callback=None):
         """Generic delete function"""
-        request = Element('delete_{}'.format(data_type))
+        request = Element("delete_{}".format(data_type))
 
-        request.set('{}_id'.format(data_type), id)
+        request.set("{}_id".format(data_type), id)
 
-        response = self._command(request)
-
-        if callback is None:
-            def callback(element):
-                return list(xml_to_dict(element).values())[0]
-
-        return callback(response)
+        return self._command(request)
 
     def _manage_task(self, request, id=None, name=None):
         """Generic function to manage tasks"""
+
         if id is None and name:
-            task = self.list_tasks(name=name)
-            if len(task) == 0:
-                id = task[0]["@id"]
-            else:
-                raise ClientError("404", "Could not find task")
+            id = self.list_tasks(name=name)[0]["@id"]
 
-        request.set('task_id', id)
+        request.set("task_id", id)
 
-        response = self._command(request)
-
-        return list(xml_to_dict(response).values())[0]
+        return self._command(request)
 
     def _send_request(self, request):
         """Send XML data to OpenVAS Manager and get results"""
@@ -399,11 +396,11 @@ class Client(object):
 
         if etree.iselement(request):
             root = ElementTree(request)
-            root.write(self.socket, encoding='utf-8')
+            root.write(self.socket, encoding="utf-8")
 
         else:
             if isinstance(request, six.text_type):
-                request = request.encode('utf-8')
+                request = request.encode("utf-8")
             self.socket.send(request)
 
         parser = etree.XMLTreeBuilder()
