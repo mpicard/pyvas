@@ -6,6 +6,7 @@ Tests for pyvas Response
 from __future__ import unicode_literals
 
 import collections
+import six
 import pytest
 from lxml.etree import Element, SubElement, iselement
 
@@ -42,7 +43,7 @@ def test_response_init(response):
 def test_response_dict_interface(response):
     assert bool(response) is True
     assert isinstance(iter(response), collections.Iterable)
-    assert isinstance(str(response), basestring)
+    assert isinstance(str(response), six.string_types)
     assert repr(response)
     assert response.get("@test_id")
     assert response.update({"new_data": 1}) is None
