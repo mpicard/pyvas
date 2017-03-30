@@ -104,13 +104,8 @@ class Client(object):
         return self._get("config", uuid=uuid)
 
     def create_config(self, name, copy_uuid=None, *args, **kwargs):
-        request = dict_to_lxml(
-            "create_config",
-            {
-                "name": name,
-                "copy": copy_uuid
-            }
-        )
+        request = dict_to_lxml("create_config",
+                               {"name": name, "copy": copy_uuid})
         return self._create(request)
 
     def modify_config(self, *args, **kwargs):
