@@ -113,8 +113,8 @@ class Client(object):
         )
         return self._create(request)
 
-    def update_config(self, *args, **kwargs):
-        raise NotImplementedError
+    def update_config(self, uuid, **kwargs):
+        return self._update('config', )
 
     def delete_config(self, uuid):
         return self._delete("config", uuid=uuid)
@@ -321,9 +321,11 @@ class Client(object):
         """generic create function"""
         return self._command(request)
 
-    def _update(self, data_type, **kwargs):
+    def _update(self, data_type, uuid, **kwargs):
         """Generic update function"""
         request = dict_to_lxml("modify_{}".format(data_type), kwargs)
+
+        request.set('{}_id'.format(data_type), uuid)
 
         return self._command(request)
 
