@@ -91,21 +91,8 @@ class Client(object):
 
         return self._create(request)
 
-    def update_target(self, name, hosts, comment=None):
-
-        if comment is None:
-            comment = ""
-
-        request = dict_to_lxml(
-            "modify_target",
-            {
-                "name": name,
-                "hosts": hosts,
-                "comment": comment
-            }
-        )
-
-        return self._update(request)
+    def update_target(self, uuid, **kwargs):
+        return self._update('target', **kwargs)
 
     def delete_target(self, uuid):
         return self._delete("target", uuid=uuid)
