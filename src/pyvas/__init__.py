@@ -91,8 +91,8 @@ class Client(object):
 
         return self._create(request)
 
-    def update_target(self, uuid, **kwargs):
-        return self._update('target', **kwargs)
+    def modify_target(self, uuid, **kwargs):
+        return self._modify('target', uuid=uuid, exclude_hosts=None, **kwargs)
 
     def delete_target(self, uuid):
         return self._delete("target", uuid=uuid)
@@ -113,7 +113,7 @@ class Client(object):
         )
         return self._create(request)
 
-    def update_config(self, *args, **kwargs):
+    def modify_config(self, *args, **kwargs):
         raise NotImplementedError
 
     def delete_config(self, uuid):
@@ -172,17 +172,20 @@ class Client(object):
 
         return self._create(request)
 
-    def start_task(self, uuid=None, name=None):
+    def start_task(self, uuid):
         request = etree.Element("start_task")
-        return self._manage_task(request, uuid=uuid, name=name)
+        request.set("task_id", uuid)
+        return self._command(request)
 
-    def stop_task(self, uuid=None, name=None):
+    def stop_task(self, uuid):
         request = etree.Element("stop_task")
-        return self._manage_task(request, uuid=uuid, name=name)
+        request.set("task_id", uuid)
+        return self._command(request)
 
-    def resume_task(self, uuid=None, name=None):
+    def resume_task(self, uuid):
         request = etree.Element("resume_task")
-        return self._manage_task(request, uuid=uuid, name=name)
+        request.set("task_id", uuid)
+        return self._command(request)
 
     def delete_task(self, uuid):
         return self._delete("task", uuid=uuid)
@@ -265,14 +268,14 @@ class Client(object):
     def get_schedule(self, uuid, **kwargs):
         return self._get('schedule', uuid=uuid)
 
-    def update_schedule(self):
+    def modify_schedule(self):
         raise NotImplementedError
 
     def delete_schedule(self, uuid):
         return self._delete('schedule', uuid=uuid)
 
     def _command(self, request, callback=None):
-        """Send, build and valuuidate response"""
+        """Send, build and validate response"""
         resp = self._send_request(request)
 
         response = Response(req=request, resp=resp, callback=callback)
@@ -321,9 +324,11 @@ class Client(object):
         """generic create function"""
         return self._command(request)
 
-    def _update(self, data_type, **kwargs):
-        """Generic update function"""
+    def _modify(self, data_type, uuid, **kwargs):
+        """Generic modify function"""
         request = dict_to_lxml("modify_{}".format(data_type), kwargs)
+
+        request.set('{}_id'.format(data_type), uuid)
 
         return self._command(request)
 
@@ -332,16 +337,6 @@ class Client(object):
         request = etree.Element("delete_{}".format(data_type))
 
         request.set("{}_id".format(data_type), uuid)
-
-        return self._command(request)
-
-    def _manage_task(self, request, uuid=None, name=None):
-        """Generic function to manage tasks"""
-
-        if uuid is None and name:
-            uuid = self.list_tasks(name=name)[0]["@id"]
-
-        request.set("task_id", uuid)
 
         return self._command(request)
 

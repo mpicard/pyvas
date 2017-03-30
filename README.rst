@@ -31,5 +31,5 @@ How to Contribute
 .. |Build Status| image:: https://travis-ci.org/mpicard/pyvas.svg?branch=master
    :target: https://travis-ci.org/mpicard/pyvas
 
-.. |Coverage| image:: https://coveralls.io/repos/github/mpicard/pyvas/badge.svg?branch=master
-    :target: https://coveralls.io/github/mpicard/pyvas?branch=master
+.. |Coverage| image:: https://coveralls.io/repos/github/mpicard/pyvas/badge.svg
+    :target: https://coveralls.io/github/mpicard/pyvas

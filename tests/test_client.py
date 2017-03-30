@@ -11,7 +11,7 @@ import time
 import six
 import pytest
 from lxml import etree
-try:
+try:  # pragma: no cover
     from HTMLParser import HTMLParser
 except ImportError:
     from html.parser import HTMLParser
@@ -37,7 +37,7 @@ slow = pytest.mark.skipif(
 )
 
 
-def test_environment():
+def test_environment():  # pragma: no cover
     __tracebackhide__ = True
     if HOST is None:
         pytest.fail("OpenVAS host required in env")
@@ -111,6 +111,21 @@ class TestTargets(TestClientBase):
         assert target["name"] == response["name"]
         assert target["@id"] == response["@id"]
 
+    def test_modify_target(self):
+        try:
+            target = self.cli.create_target(name=NAME, hosts=LOCALHOST)
+        except exceptions.ElementExists:
+            target = self.cli.list_targets(name=NAME)[0]
+        response = self.cli.modify_target(uuid=target["@id"],
+                                          hosts="10.10.10.10",
+                                          comment="I was modified, yay!")
+        assert response.ok
+        # validate attributes
+        target = self.cli.get_target(uuid=target["@id"])
+        assert target.ok
+        assert target["hosts"] == '10.10.10.10'
+        assert target["comment"] == "I was modified, yay!"
+
     def test_delete_target(self):
         try:
             target = self.cli.create_target(name=NAME, hosts=LOCALHOST)
@@ -139,7 +154,7 @@ class TestConfigs(TestClientBase):
         assert response[0]["name"] == "Host Discovery"
 
     def test_get_config(self):
-        try:
+        try:  # pragma: no cover
             config = self.cli.list_configs(name=NAME)[0]
         except IndexError:
             copy = self.cli.list_configs(name="empty")[0]
@@ -151,7 +166,7 @@ class TestConfigs(TestClientBase):
         assert response["@id"] == config["@id"]
 
     def test_delete_config(self):
-        try:
+        try:  # pragma: no cover
             config = self.cli.list_configs(name=NAME)[0]
         except IndexError:
             copy = self.cli.list_configs(name="empty")[0]
@@ -161,10 +176,10 @@ class TestConfigs(TestClientBase):
 
     @classmethod
     def teardown_class(cls):
-        try:
+        try:  # pragma: no cover
             config = cls.cli.list_configs(name=NAME)[0]
             cls.cli.delete_config(uuid=config["@id"])
-        except IndexError:  # already deleted
+        except IndexError:
             pass
         super(TestConfigs, cls).teardown_class()
 
@@ -183,7 +198,7 @@ class TestScanners(TestClientBase):
         assert len(response) == 1
 
     def test_get_scanner(self):
-        try:
+        try:  # pragma: no cover
             scanner = self.cli.list_scanners(name="OpenVAS Default")[0]
         except Exception as e:
             raise e
@@ -223,7 +238,7 @@ class TestTasks(TestClientBase):
     def test_create_task(self):
         # Use simplest/fatests scan config
         config = self.cli.list_configs(name="Host Discovery")[0]
-        try:
+        try:  # pragma: no cover
             target = self.cli.create_target(name=NAME, hosts=LOCALHOST)
         except exceptions.ElementExists:
             target = self.cli.list_targets(name=NAME)[0]
@@ -240,7 +255,7 @@ class TestTasks(TestClientBase):
         assert len(response)
 
     def test_start_task(self):
-        try:
+        try:  # pragma: no cover
             task = self.cli.list_tasks(name=NAME)[0]
         except IndexError:
             # create missing task
@@ -257,12 +272,12 @@ class TestTasks(TestClientBase):
             assert response
             assert response["@status"] == "202"
             assert response["report_id"]
-        except exceptions.HTTPError as e:
+        except exceptions.HTTPError as e:  # pragma: no cover
             if "active already" in e.response.reason:
                 pass
 
     def test_stop_task(self):
-        try:
+        try:  # pragma: no cover
             task = self.cli.list_tasks(name=NAME)[0]
         except IndexError:
             # create missing task
@@ -280,7 +295,7 @@ class TestTasks(TestClientBase):
         assert response["@status"] == "202"
 
     def test_get_task(self):
-        try:
+        try:  # pragma: no cover
             task = self.cli.list_tasks(name=NAME)[0]
         except IndexError:
             # create missing task
@@ -301,7 +316,7 @@ class TestTasks(TestClientBase):
 
     @slow
     def test_resume_task(self):
-        try:
+        try:  # pragma: no cover
             task = self.cli.list_tasks(name=NAME)[0]
         except IndexError:
             # create missing task
@@ -313,7 +328,7 @@ class TestTasks(TestClientBase):
             task = self.cli.create_task(name=NAME,
                                         target_uuid=target["@id"],
                                         config_uuid=config["@id"])
-        try:
+        try:  # pragma: no cover
             self.cli.start_task(uuid=task["@id"])
         except exceptions.HTTPError as e:
             if "active already" in e.response.reason:
@@ -330,7 +345,7 @@ class TestTasks(TestClientBase):
 
     @slow
     def test_delete_task(self):
-        try:
+        try:  # pragma: no cover
             task = self.cli.list_tasks(name=NAME)[0]
         except IndexError:
             # create missing task
@@ -365,7 +380,7 @@ class TestReports(TestClientBase):
 
     @slow
     def test_get_report(self):
-        try:
+        try:  # pragma: no cover
             report = self.cli.list_reports(task=NAME, owner=USERNAME)[0]
         except IndexError:
             # make task and report
@@ -391,17 +406,17 @@ class TestReports(TestClientBase):
 
     @slow
     def test_download_report_with_xml_format(self):
-        try:
+        try:  # pragma: no cover
             report = self.cli.list_reports(task=NAME, owner=USERNAME)[0]
         except IndexError:
-            assert False
+            assert False, "Failed to download report"
         response = self.cli.download_report(uuid=report["@id"])
         assert etree.iselement(response)
         assert response.attrib["id"] == report["@id"]
 
     @slow
     def test_download_report_with_html_format(self):
-        try:
+        try:  # pragma: no cover
             report = self.cli.list_reports(task=NAME, owner=USERNAME)[0]
         except IndexError:
             assert False
@@ -430,6 +445,6 @@ class TestSchedules(TestClientBase):
         # TODO
         pass
 
-    def test_update_schedule(self):
+    def test_modify_schedule(self):
         # TODO
         pass

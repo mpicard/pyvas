@@ -47,6 +47,7 @@ def test_response_dict_interface(response):
     assert repr(response)
     assert response.get("@test_id")
     assert response.update({"new_data": 1}) is None
+    print(response.get('new_data'))
     assert response.get("new_data") is 1
     response["more"] = 1
     assert response["more"] is 1
