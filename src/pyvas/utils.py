@@ -3,10 +3,11 @@
 pyvas utilities
 ~~~~~~~~~~~~~~~
 """
+from __future__ import unicode_literals, print_function
 
+import collections
 import six
-from collections import defaultdict
-from lxml.etree import Element
+from lxml import etree
 
 
 def dict_to_lxml(root, dct):
@@ -24,7 +25,7 @@ def dict_to_lxml(root, dct):
                     # Use @tag to set attributes
                     parent.set(tag[1:], child)
                 else:
-                    elem = Element(tag)
+                    elem = etree.Element(tag)
                     parent.append(elem)
                     inner_dict_to_xml(elem, child)
 
@@ -36,7 +37,7 @@ def dict_to_lxml(root, dct):
         elif dict_item is not None:
             parent.text = six.text_type(dict_item)
 
-    root = Element(root)
+    root = etree.Element(root)
     inner_dict_to_xml(root, dct)
     return root
 
@@ -44,25 +45,26 @@ def dict_to_lxml(root, dct):
 def lxml_to_dict(tree):
     """Convert XML ElementTree to dictionary"""
     try:
-        d = {tree.tag: {} if tree.attrib else None}
+        dct = {tree.tag: {} if tree.attrib else None}
     except AttributeError:
         raise TypeError("tree must be an XML ElementTree")
 
     children = list(tree)
     if children:
-        dd = defaultdict(list)
-        for dc in map(lxml_to_dict, children):
-            for k, v in six.iteritems(dc):
-                dd[k].append(v)
-        d = {tree.tag: {k: v[0] if len(v) == 1 else v
-                        for k, v in six.iteritems(dd)}}
+        default_dict = collections.defaultdict(list)
+        for child in [lxml_to_dict(child) for child in children]:
+            for key, value in six.iteritems(child):
+                default_dict[key].append(value)
+        dct = {tree.tag: {key: value[0] if len(value) == 1 else value
+                          for key, value in six.iteritems(default_dict)}}
     if tree.attrib:
-        d[tree.tag].update(("@" + k, v) for k, v in six.iteritems(tree.attrib))
+        dct[tree.tag].update(("@" + key, value)
+                             for key, value in six.iteritems(tree.attrib))
     if tree.text:
         text = tree.text.strip()
         if children or tree.attrib:
             if text:
-                d[tree.tag]["#text"] = text
+                dct[tree.tag]["#text"] = text
         else:
-            d[tree.tag] = text
-    return d
+            dct[tree.tag] = text
+    return dct

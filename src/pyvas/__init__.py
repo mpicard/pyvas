@@ -3,39 +3,28 @@
 """
 OpenVAS Manager Protocol v7 Client
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 """
 from __future__ import unicode_literals, print_function
-
-__title__ = "pyvas"
-__version__ = "0.0.2"
-__author__ = "Martin Picard"
-__license__ = "MIT"
-__copyright__ = "Copyright 2016 Martin Picard"
-
 
 import os
 import socket
 import ssl
 import six
 from lxml import etree
-from lxml.etree import ElementTree, Element
 
 from .response import Response
 from .utils import (dict_to_lxml, lxml_to_dict)
 from .exceptions import AuthenticationError, HTTPError
 
 
+__title__ = "pyvas"
+__version__ = "0.0.2"
+__author__ = "Martin Picard"
+__license__ = "MIT"
+__copyright__ = "Copyright 2017 Martin Picard"
+
+
 DEFAULT_PORT = os.environ.get("OPENVASMD_PORT", 9390)
-
-
-def print_xml(response):  # pragma: no cover
-    """Debugging print"""
-    if isinstance(response, list):
-        for item in response:
-            print("\n" + etree.tostring(item, pretty_print=True))
-    else:
-        print("\n" + etree.tostring(response, pretty_print=True))
 
 
 class Client(object):
@@ -85,14 +74,11 @@ class Client(object):
         except HTTPError:
             raise AuthenticationError(username)
 
-    """
-    OMP Targets
-    """
     def list_targets(self, **kwargs):
         return self._list("targets", **kwargs)
 
-    def get_target(self, id):
-        return self._get("target", id=id)
+    def get_target(self, uuid):
+        return self._get("target", uuid=uuid)
 
     def create_target(self, name, hosts, comment=None):
         if comment is None:
@@ -112,84 +98,75 @@ class Client(object):
 
         request = dict_to_lxml(
             "modify_target",
-            {}
+            {
+                "name": name,
+                "hosts": hosts,
+                "comment": comment
+            }
         )
 
         return self._update(request)
 
-    def delete_target(self, id):
-        return self._delete("target", id=id)
+    def delete_target(self, uuid):
+        return self._delete("target", uuid=uuid)
 
-    """
-    OMP Configs
-    """
     def list_configs(self, **kwargs):
         return self._list("configs", **kwargs)
 
-    def get_config(self, id):
-        return self._get("config", id=id)
+    def get_config(self, uuid):
+        return self._get("config", uuid=uuid)
 
-    def create_config(self, name, copy_id=None, config=None, *args, **kwargs):
-        if config:
-            raise NotImplemented("Config response copying not supported yet")
+    def create_config(self, name, copy_uuid=None, *args, **kwargs):
         request = dict_to_lxml(
             "create_config",
-            {"name": name, "copy": copy_id}
+            {
+                "name": name,
+                "copy": copy_uuid
+            }
         )
         return self._create(request)
 
     def update_config(self, *args, **kwargs):
-        # TODO
         raise NotImplementedError
 
-    def delete_config(self, id):
-        return self._delete("config", id=id)
+    def delete_config(self, uuid):
+        return self._delete("config", uuid=uuid)
 
-    """
-    OMP Scanners
-    """
     def list_scanners(self, **kwargs):
         return self._list("scanners", **kwargs)
 
-    def get_scanner(self, id):
-        return self._get("scanner", id=id)
+    def get_scanner(self, uuid):
+        return self._get("scanner", uuid=uuid)
 
     def create_scanner(self, *args, **kwargs):
-        # TODO
         raise NotImplementedError
 
-    def delete_scanner(self, id):
-        # TODO
+    def delete_scanner(self, uuid):
         raise NotImplementedError
 
-    """
-    OMP Report Format
-    """
     def list_report_formats(self, **kwargs):
-        # TODO: filtering kwargs
         return self._list("report_formats", **kwargs)
 
-    def get_report_format(self, id):
-        return self._get("report_format", id=id)
+    def get_report_format(self, uuid):
+        return self._get("report_format", uuid=uuid)
 
-    """
-    OMP Tasks
-    """
     def list_tasks(self, **kwargs):
-        # TODO: kwarg filtering
         return self._list("tasks", **kwargs)
 
-    def get_task(self, id):
-        return self._get("task", id=id)
+    def get_task(self, uuid):
+        return self._get("task", uuid=uuid)
 
-    def create_task(self, name, config_id, target_id, scanner_id=None, comment=None):
+    def create_task(self, name, config_uuid, target_uuid,
+                    scanner_uuid=None, comment=None):
+        """Create a task (aka scan)"""
+
         if comment is None:
             comment = ""
 
-        if scanner_id is None:
+        if scanner_uuid is None:
             # Use default scanner
             try:
-                scanner_id = self.list_scanners(
+                scanner_uuid = self.list_scanners(
                     name="OpenVAS Default"
                 )[0]["@id"]
             except (HTTPError, IndexError):
@@ -199,51 +176,48 @@ class Client(object):
             "create_task",
             {
                 "name": name,
-                "config": [("id", config_id)],
-                "target": [("id", target_id)],
-                "scanner": [("id", scanner_id)],
+                "config": [("id", config_uuid)],
+                "target": [("id", target_uuid)],
+                "scanner": [("id", scanner_uuid)],
                 "comment": comment,
             }
         )
 
         return self._create(request)
 
-    def start_task(self, id=None, name=None):
-        request = Element("start_task")
-        return self._manage_task(request, id=id, name=name)
+    def start_task(self, uuid=None, name=None):
+        request = etree.Element("start_task")
+        return self._manage_task(request, uuid=uuid, name=name)
 
-    def stop_task(self, id=None, name=None):
-        request = Element("stop_task")
-        return self._manage_task(request, id=id, name=name)
+    def stop_task(self, uuid=None, name=None):
+        request = etree.Element("stop_task")
+        return self._manage_task(request, uuid=uuid, name=name)
 
-    def resume_task(self, id=None, name=None):
-        request = Element("resume_task")
-        return self._manage_task(request, id=id, name=name)
+    def resume_task(self, uuid=None, name=None):
+        request = etree.Element("resume_task")
+        return self._manage_task(request, uuid=uuid, name=name)
 
-    def delete_task(self, id):
-        return self._delete("task", id=id)
+    def delete_task(self, uuid):
+        return self._delete("task", uuid=uuid)
 
-    """
-    OMP Reports
-    """
     def list_reports(self, **kwargs):
         return self._list("reports", **kwargs)
 
-    def create_report(self, report, task_id=None, task_name=None,
+    def create_report(self, report, task_uuid=None, task_name=None,
                       task_comment=None, in_assets=True):
         raise NotImplementedError
 
-    def get_report(self, id, **kwargs):
-        return self._get('report', id=id)
+    def get_report(self, uuid, **kwargs):
+        return self._get('report', uuid=uuid)
 
-    def download_report(self, id, format_id=None, as_element_tree=False):
+    def download_report(self, uuid, format_uuid=None, as_element_tree=False):
         """Get XML or base64 encoded report contents"""
-        request = Element("get_reports")
+        request = etree.Element("get_reports")
 
-        request.set("report_id", id)
+        request.set("report_id", uuid)
 
-        if format_id is not None:
-            request.set("format_id", format_id)
+        if format_uuid is not None:
+            request.set("format_id", format_uuid)
 
         response = self._command(request)
 
@@ -251,15 +225,12 @@ class Client(object):
 
         if report.attrib["content_type"] == "text/xml" or as_element_tree:
             return report
-        report = response.find(".//report_format").tail
+        report = response.xml.find(".//report_format").tail
         try:
             return report.decode("base64")
         except AttributeError:
             return report
 
-    """
-    OMP Schedules
-    """
     def list_schedules(self, **kwargs):
         return self._list("schedules", **kwargs)
 
@@ -304,43 +275,42 @@ class Client(object):
 
         return self._create(request)
 
-    def get_schedule(self, id, **kwargs):
-        return self._get('schedule', id=id)
+    def get_schedule(self, uuid, **kwargs):
+        return self._get('schedule', uuid=uuid)
 
     def update_schedule(self):
         raise NotImplementedError
 
-    def delete_schedule(self, id):
-        return self._delete('schedule', id=id)
+    def delete_schedule(self, uuid):
+        return self._delete('schedule', uuid=uuid)
 
-    """
-    Client internal methods
-    """
     def _command(self, request, callback=None):
-        """Send, build and validate reponse"""
+        """Send, build and valuuidate response"""
         resp = self._send_request(request)
 
         response = Response(req=request, resp=resp, callback=callback)
-        # validate response, raise exceptions, if any
+        # valuuidate response, raise exceptions, if any
         response.raise_for_status()
 
         return response
 
-    def _get(self, data_type, id, callback=None, **kwargs):
+    def _get(self, data_type, uuid, callback=None, **kwargs):
         """Generic get function"""
-        request = Element("get_{}s".format(data_type))
+        request = etree.Element("get_{}s".format(data_type))
 
-        request.set("{}_id".format(data_type), id)
+        request.set("{}_id".format(data_type), uuid)
 
         if callback is None:
-            def callback(response):
-                return list(lxml_to_dict(response.find(data_type)).values())[0]
+            def callback(resp):
+                return list(
+                    lxml_to_dict(resp.find(data_type)).values()
+                )[0]
 
         return self._command(request, callback)
 
     def _list(self, data_type, callback=None, **kwargs):
         """Generic list function"""
-        request = Element("get_{}".format(data_type))
+        request = etree.Element("get_{}".format(data_type))
 
         request.set("{}_id".format(data_type), kwargs.pop("id", ""))
 
@@ -356,8 +326,7 @@ class Client(object):
         items = response.xml.findall(data_type[:-1])
 
         if callback is None:
-            def callback(element):
-                return list(lxml_to_dict(element).values())[0]
+            callback = self._get_default_callback()
 
         return [callback(element) for element in items]
 
@@ -371,31 +340,31 @@ class Client(object):
 
         return self._command(request)
 
-    def _delete(self, data_type, id, callback=None):
+    def _delete(self, data_type, uuid, callback=None):
         """Generic delete function"""
-        request = Element("delete_{}".format(data_type))
+        request = etree.Element("delete_{}".format(data_type))
 
-        request.set("{}_id".format(data_type), id)
+        request.set("{}_id".format(data_type), uuid)
 
         return self._command(request)
 
-    def _manage_task(self, request, id=None, name=None):
+    def _manage_task(self, request, uuid=None, name=None):
         """Generic function to manage tasks"""
 
-        if id is None and name:
-            id = self.list_tasks(name=name)[0]["@id"]
+        if uuid is None and name:
+            uuid = self.list_tasks(name=name)[0]["@id"]
 
-        request.set("task_id", id)
+        request.set("task_id", uuid)
 
         return self._command(request)
 
     def _send_request(self, request):
         """Send XML data to OpenVAS Manager and get results"""
 
-        BLOCK_SIZE = 1024
+        block_size = 1024
 
         if etree.iselement(request):
-            root = ElementTree(request)
+            root = etree.ElementTree(request)
             root.write(self.socket, encoding="utf-8")
 
         else:
@@ -406,9 +375,9 @@ class Client(object):
         parser = etree.XMLTreeBuilder()
 
         while True:
-            response = self.socket.recv(BLOCK_SIZE)
+            response = self.socket.recv(block_size)
             parser.feed(response)
-            if len(response) < BLOCK_SIZE:
+            if len(response) < block_size:
                 break
 
         root = parser.close()
@@ -419,6 +388,12 @@ class Client(object):
         self.open()
         return self
 
-    def __exit__(self, type, value, tb):
+    def __exit__(self, exc_type, ex_val, exc_tb):
         """Implements `with` context manager syntax"""
         self.close()
+
+    @staticmethod
+    def _get_default_callback():
+        def callback(element):
+            return list(lxml_to_dict(element).values())[0]
+        return callback

@@ -9,16 +9,6 @@ from .utils import lxml_to_dict
 from .exceptions import ResultError, HTTPError, ElementExists
 
 
-def print_xml(response):  # pragma: no cover
-    from lxml import etree
-    """Debugging print"""
-    if isinstance(response, list):
-        for item in response:
-            print("\n" + etree.tostring(item, pretty_print=True))
-    else:
-        print("\n" + etree.tostring(response, pretty_print=True))
-
-
 class Response(dict):
     """Object which contains an server"s response to an OMP request."""
 
@@ -79,6 +69,7 @@ class Response(dict):
 
     @property
     def ok(self):
+        """Returns True if response code between 100 and 399"""
         try:
             self.raise_for_status()
         except HTTPError:
@@ -95,14 +86,16 @@ class Response(dict):
         error_msg = ""
 
         if 400 <= self.status_code < 500:
-            error_msg = "{} Client Error: {}".format(self.status_code, self.reason)
+            error_msg = "{} Client Error: {}".format(self.status_code,
+                                                     self.reason)
 
             if self.status_code == 400:
                 if "exists" in self.reason:
                     raise ElementExists(error_msg, response=self)
 
         elif 500 <= self.status_code < 600:
-            error_msg = "{} Server Error: {}".format(self.status_code, self.reason)
+            error_msg = "{} Server Error: {}".format(self.status_code,
+                                                     self.reason)
 
         if error_msg:
             raise HTTPError(error_msg, response=self)

@@ -11,17 +11,17 @@ class Error(Exception):
 
 
 class ResultError(Error):
-    """Invalid response from Server."""
+    """Invaluuid response from Server."""
 
     def __str__(self):
-        return "Invalid result: response from %s is invalid: %s" % self.args
+        return "Invaluuid result: response from %s is invalid: %s" % self.args
 
 
 class AuthenticationError(Error):
     """Authentication Failed"""
 
 
-class RequestError(IOError):
+class RequestError(Error):
     """There was an ambiguous exception that occured while handling you
     request.
     """
