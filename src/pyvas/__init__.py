@@ -18,7 +18,7 @@ from .exceptions import AuthenticationError, HTTPError
 
 
 __title__ = "pyvas"
-__version__ = "0.0.2"
+__version__ = "0.1.0"
 __author__ = "Martin Picard"
 __license__ = "MIT"
 __copyright__ = "Copyright 2017 Martin Picard"
