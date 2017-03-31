@@ -1,3 +1,4 @@
 [run]
 branch = true
 omit = tests/*
+parallel = true
