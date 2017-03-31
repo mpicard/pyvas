@@ -18,7 +18,7 @@ from setuptools import find_packages
 setup(
     name="pyvas",
     version="0.1.0",
-    description="An OpenVAS Managment Protocol (OMP) client for Python",
+    description="An OpenVAS Managment Protocol (OMP) v7 client for Python",
     url="https://github.com/mpicard/pyvas",
     author="Martin Picard",
     author_email="martin8768@gmail.com",
@@ -44,5 +44,5 @@ setup(
     py_modules=[splitext(basename(path))[0] for path in glob("src/*.py")],
     install_requires=["six", "lxml"],
     setup_requires=["pytest-runner"],
-    tests_require=["pytest", "pytest-cov", "coverage", "tox"],
+    tests_require=["tox"],
 )

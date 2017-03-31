@@ -19,7 +19,7 @@ persistent=yes
 load-plugins=
 
 # Use multiple processes to speed up Pylint.
-jobs=1
+jobs=4
 
 # Allow loading of arbitrary C extensions. Extensions are imported into the
 # active Python interpreter and may run arbitrary code.
@@ -136,7 +136,7 @@ callbacks=cb_,_cb
 bad-functions=map,filter,input
 
 # Good variable names which should always be accepted, separated by a comma
-good-names=i,j,k,ex,Run,_
+good-names=i,j,k,ex,Run,_,k,v
 
 # Bad variable names which should always be refused, separated by a comma
 bad-names=foo,bar,baz,toto,tutu,tata
