@@ -21,7 +21,7 @@ with open('README.rst', 'r', 'utf-8') as f:
 
 setup(
     name="pyvas",
-    version="0.2.0",
+    version="0.3.0",
     description="An OpenVAS Managment Protocol (OMP) v7 client for Python",
     long_description=readme,
     url="https://github.com/mpicard/pyvas",
