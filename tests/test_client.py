@@ -257,7 +257,18 @@ class TestTasks(object):
         response = client.create_task(name=NAME,
                                       target_uuid=target["@id"],
                                       config_uuid=config["@id"])
-        assert response
+        assert response.ok
+
+        # with schedule
+        ft = {'minute': 1, 'hour': 2, 'day_of_month': 3, 'year': '2017'}
+        schedule = client.create_schedule(name=NAME + '_tasked', first_time=ft,
+                                          duration=1, duration_unit='day',
+                                          period=2, period_unit='week',
+                                          timezone='UTC')
+        response = client.create_task(name=NAME + '_scheduled',
+                                      target_uuid=target["@id"],
+                                      config_uuid=config["@id"],
+                                      schedule_uuid=schedule["@id"])
         assert response.ok
 
         # bad requests

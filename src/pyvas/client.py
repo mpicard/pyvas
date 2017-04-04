@@ -162,11 +162,8 @@ class Client(object):
         return self._get("task", uuid=uuid)
 
     def create_task(self, name, config_uuid, target_uuid,
-                    scanner_uuid=None, comment=None):
+                    scanner_uuid=None, comment=None, schedule_uuid=None):
         """Create a task."""
-
-        if comment is None:
-            comment = ""
 
         if scanner_uuid is None:
             # try to use default scanner
@@ -177,17 +174,20 @@ class Client(object):
                 raise ElementNotFound('''Could not find default scanner,
                                       please use scanner_uuid to specify a
                                       scanner.''')
+        data = {
+            "name": name,
+            "config": {"@id": config_uuid},
+            "target": {"@id": target_uuid},
+            "scanner": {"@id": scanner_uuid},
+        }
 
-        request = dict_to_lxml(
-            "create_task",
-            {
-                "name": name,
-                "config": {"@id": config_uuid},
-                "target": {"@id": target_uuid},
-                "scanner": {"@id": scanner_uuid},
-                "comment": comment,
-            }
-        )
+        if schedule_uuid is not None:
+            data.update({"schedule": {"@id": schedule_uuid}})
+
+        if comment is not None:
+            data.update({"comment": comment})
+
+        request = dict_to_lxml("create_task", data)
 
         # print_xml(request)
 
