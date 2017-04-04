@@ -15,10 +15,15 @@ from setuptools import setup
 from setuptools import find_packages
 
 
+with open('README.rst', 'r', 'utf-8') as f:
+    readme = f.read()
+
+
 setup(
     name="pyvas",
     version="0.2.0",
     description="An OpenVAS Managment Protocol (OMP) v7 client for Python",
+    long_description=readme,
     url="https://github.com/mpicard/pyvas",
     author="Martin Picard",
     author_email="martin8768@gmail.com",
