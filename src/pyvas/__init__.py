@@ -4,7 +4,7 @@ OpenVAS Manager Protocol v7 Client
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 """
 __title__ = "pyvas"
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "Martin Picard"
 __license__ = "MIT"
 __copyright__ = "Copyright 2017 Martin Picard"
