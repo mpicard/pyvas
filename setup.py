@@ -11,6 +11,8 @@ from glob import glob
 from os.path import basename
 from os.path import splitext
 
+from codecs import open
+
 from setuptools import setup
 from setuptools import find_packages
 
