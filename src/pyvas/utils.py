@@ -3,7 +3,6 @@
 pyvas utilities
 ~~~~~~~~~~~~~~~
 """
-from __future__ import unicode_literals, print_function
 
 import collections
 import six
@@ -21,18 +20,16 @@ def dict_to_lxml(root, dct):
         """Recursive dict to ElementTree conversion"""
         if isinstance(dict_item, dict):
             for tag, child in six.iteritems(dict_item):
-                if tag.startswith("@"):
+                if six.text_type(tag) == '#text':
+                    parent.text = six.text_type(child)
+                elif tag.startswith("@"):
                     # Use @tag to set attributes
+                    # print(tag)
                     parent.set(tag[1:], child)
                 else:
                     elem = etree.Element(tag)
                     parent.append(elem)
                     inner_dict_to_xml(elem, child)
-
-        elif isinstance(dict_item, list):
-            # Or use list of tuples to set attributes
-            for key, value in dict_item:
-                parent.set(key, value)
 
         elif dict_item is not None:
             parent.text = six.text_type(dict_item)
@@ -42,7 +39,7 @@ def dict_to_lxml(root, dct):
     return root
 
 
-def lxml_to_dict(tree):
+def lxml_to_dict(tree, strip_root=False):
     """Convert XML ElementTree to dictionary"""
     try:
         dct = {tree.tag: {} if tree.attrib else None}
@@ -63,8 +60,11 @@ def lxml_to_dict(tree):
     if tree.text:
         text = tree.text.strip()
         if children or tree.attrib:
-            if text:
-                dct[tree.tag]["#text"] = text
+            dct[tree.tag]["#text"] = text
         else:
             dct[tree.tag] = text
+
+    if strip_root:
+        return list(dct.values())[0]
+
     return dct

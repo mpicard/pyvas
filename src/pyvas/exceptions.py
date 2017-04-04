@@ -1,8 +1,9 @@
-# -*- coding: utf-8 -*-
+# -*-v coding: utf-8 -*-
 """
 pyvas exceptions
 ~~~~~~~~~~~~~~~~
 """
+
 from __future__ import unicode_literals, print_function
 
 
@@ -11,10 +12,10 @@ class Error(Exception):
 
 
 class ResultError(Error):
-    """Invaluuid response from Server."""
+    """Invalid response from Server."""
 
     def __str__(self):
-        return "Invaluuid result: response from %s is invalid: %s" % self.args
+        return "Invalid result: response from %s is invalid: %s" % self.args
 
 
 class AuthenticationError(Error):
@@ -43,3 +44,15 @@ class HTTPError(RequestError):
 
 class ElementExists(HTTPError):
     """Attempt to create an element that already exists."""
+
+
+class ElementNotFound(HTTPError):
+    """404: Failed to find an element with given parameters."""
+
+
+class InvalidArgumentError(HTTPError):
+    """Invalid argument provided by client."""
+
+
+class ServerError(HTTPError):
+    """Unexpected error occured on the OpenVAS server."""

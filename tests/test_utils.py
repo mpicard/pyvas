@@ -23,20 +23,20 @@ def test_dict_to_lxml_function():
         ("name", "name"),
         ("@tag", "tag_value"),
         ("comment", "comment"),
-        ("copy", [("id", _uuid)]),
         ("child", {"@id": _uuid}),
         ("alterable", True),
+        ("#text", "")
     ))
 
     result = utils.dict_to_lxml("request", dct)
 
     expect = etree.Element("request")
+    expect.text = ""
     expect.set("tag", "tag_value")
     etree.SubElement(expect, "name").text = "name"
     etree.SubElement(expect, "comment").text = "comment"
-    etree.SubElement(expect, "copy", id=_uuid)
     etree.SubElement(expect, "child", id=_uuid)
-    etree.SubElement(expect, "alterable").text = six.text_type(True)
+    etree.SubElement(expect, "alterable").text = str(True)
 
     assert etree.tostring(result) == etree.tostring(expect)
 
@@ -55,15 +55,17 @@ def test_lxml_to_dict():
     etree.SubElement(expect, "name").text = "name"
     etree.SubElement(expect, "comment").text = "comment"
     etree.SubElement(expect, "copy", id=_uuid)
-    etree.SubElement(expect, "alterable").text = six.text_type(True)
+    etree.SubElement(expect, "alterable").text = str(True)
 
     result = utils.lxml_to_dict(expect)
 
-    assert isinstance(result, dict)
-    assert result["request"]["name"] == "name"
-    assert result["request"]["comment"] == "comment"
-    assert result["request"]["copy"]["@id"] == _uuid
-    assert result["request"]["alterable"] == six.text_type(True)
+    assert result == {"request": {
+        "#text": "root_text",
+        "name": "name",
+        "comment": "comment",
+        "alterable": "True",
+        "copy": {"@id": _uuid},
+    }}
 
     with pytest.raises(TypeError):
         utils.lxml_to_dict(1)

@@ -2,7 +2,16 @@
 """
 pyvas client
 ============
+usage:
+
+> from pyvas import client
+> with client(host, username=username, password=password) as cli:
+>     targets = cli.list_targets()
+>     if targets.ok:
+>         for target in targets:
+>             print(target["@id"])
 """
+
 from __future__ import unicode_literals, print_function
 
 import os
@@ -12,17 +21,27 @@ import six
 from lxml import etree
 
 from .response import Response
-from .utils import (dict_to_lxml, lxml_to_dict)
-from .exceptions import AuthenticationError, HTTPError
+from .utils import dict_to_lxml
+from .utils import lxml_to_dict
+from .exceptions import AuthenticationError
+from .exceptions import HTTPError
+from .exceptions import ElementNotFound
 
 
 DEFAULT_PORT = os.environ.get("OPENVASMD_PORT", 9390)
+DEFAULT_SCANNER_NAME = "OpenVAS Default"
+
+
+def print_xml(element):  # pragma: no cover noqa
+    """Debug ElementTree dump"""
+    print(etree.tostring(element, pretty_print=True))
 
 
 class Client(object):
     """OpenVAS OMP Client"""
 
     def __init__(self, host, username=None, password=None, port=DEFAULT_PORT):
+        """Initialize OMP client."""
         self.host = host
         self.port = port
         self.username = username
@@ -31,12 +50,14 @@ class Client(object):
         self.session = None
 
     def open(self, username=None, password=None):
+        """Open socket connection and authenticate client."""
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket = sock = ssl.wrap_socket(sock)
         sock.connect((self.host, self.port))
         self.authenticate(username, password)
 
     def close(self):
+        """Close client's socket connection to server."""
         self.socket.close()
         self.socket = None
 
@@ -67,12 +88,15 @@ class Client(object):
             raise AuthenticationError(username)
 
     def list_targets(self, **kwargs):
-        return self._list("targets", **kwargs)
+        """Returns list of targets, filtering via kwargs"""
+        return self._list("target", **kwargs)
 
     def get_target(self, uuid):
+        """Returns a single target using an @id."""
         return self._get("target", uuid=uuid)
 
     def create_target(self, name, hosts, comment=None):
+        """Creates a target of hosts."""
         if comment is None:
             comment = ""
 
@@ -84,107 +108,119 @@ class Client(object):
         return self._create(request)
 
     def modify_target(self, uuid, **kwargs):
+        """Updates a target with fields in kwargs."""
         return self._modify('target', uuid=uuid, exclude_hosts=None, **kwargs)
 
     def delete_target(self, uuid):
+        """Deletes a target with given id."""
         return self._delete("target", uuid=uuid)
 
     def list_configs(self, **kwargs):
-        return self._list("configs", **kwargs)
+        """List configs and filter using kwargs."""
+        return self._list("config", **kwargs)
 
     def get_config(self, uuid):
+        """Get config using uuid."""
         return self._get("config", uuid=uuid)
 
-    def create_config(self, name, copy_uuid=None, *args, **kwargs):
-        request = dict_to_lxml("create_config",
-                               {"name": name, "copy": copy_uuid})
+    def create_config(self, name, copy_uuid=None, **kwargs):
+        """Creates a new config or copies an existing config using the id of
+        a config using copy_uuid."""
+        data = {"name": name}
+        if copy_uuid is not None:
+            data["copy"] = copy_uuid
+        data.update(kwargs)
+        request = dict_to_lxml("create_config", data)
         return self._create(request)
 
-    def modify_config(self, *args, **kwargs):
-        raise NotImplementedError
-
     def delete_config(self, uuid):
+        """Delete a config with uuid."""
         return self._delete("config", uuid=uuid)
 
     def list_scanners(self, **kwargs):
-        return self._list("scanners", **kwargs)
+        """List scanners and filter using kwargs."""
+        return self._list("scanner", **kwargs)
 
     def get_scanner(self, uuid):
+        """Get scanner with uuid."""
         return self._get("scanner", uuid=uuid)
 
-    def create_scanner(self, *args, **kwargs):
-        raise NotImplementedError
-
-    def delete_scanner(self, uuid):
-        raise NotImplementedError
-
     def list_report_formats(self, **kwargs):
-        return self._list("report_formats", **kwargs)
+        """List report formats with kwargs filters."""
+        return self._list("report_format", **kwargs)
 
     def get_report_format(self, uuid):
+        """Get report format with uuid."""
         return self._get("report_format", uuid=uuid)
 
     def list_tasks(self, **kwargs):
-        return self._list("tasks", **kwargs)
+        """List tasks with kwargs filtering."""
+        return self._list("task", **kwargs)
 
     def get_task(self, uuid):
+        """Get task with uuid."""
         return self._get("task", uuid=uuid)
 
     def create_task(self, name, config_uuid, target_uuid,
                     scanner_uuid=None, comment=None):
-        """Create a task (aka scan)"""
+        """Create a task."""
 
         if comment is None:
             comment = ""
 
         if scanner_uuid is None:
-            # Use default scanner
+            # try to use default scanner
             try:
-                scanner_uuid = self.list_scanners(
-                    name="OpenVAS Default"
-                )[0]["@id"]
-            except (HTTPError, IndexError):
-                raise HTTPError()
+                scanners = self.list_scanners(name=DEFAULT_SCANNER_NAME)
+                scanner_uuid = scanners[0]["@id"]
+            except (ElementNotFound, IndexError, KeyError):
+                raise ElementNotFound('''Could not find default scanner,
+                                      please use scanner_uuid to specify a
+                                      scanner.''')
 
         request = dict_to_lxml(
             "create_task",
             {
                 "name": name,
-                "config": [("id", config_uuid)],
-                "target": [("id", target_uuid)],
-                "scanner": [("id", scanner_uuid)],
+                "config": {"@id": config_uuid},
+                "target": {"@id": target_uuid},
+                "scanner": {"@id": scanner_uuid},
                 "comment": comment,
             }
         )
 
+        # print_xml(request)
+
         return self._create(request)
 
     def start_task(self, uuid):
+        """Start a task."""
         request = etree.Element("start_task")
         request.set("task_id", uuid)
         return self._command(request)
 
     def stop_task(self, uuid):
+        """stop a task."""
         request = etree.Element("stop_task")
         request.set("task_id", uuid)
         return self._command(request)
 
     def resume_task(self, uuid):
+        """Resume a stopped task."""
         request = etree.Element("resume_task")
         request.set("task_id", uuid)
         return self._command(request)
 
     def delete_task(self, uuid):
+        """Delete a task."""
         return self._delete("task", uuid=uuid)
 
     def list_reports(self, **kwargs):
-        return self._list("reports", **kwargs)
-
-    def create_report(self, report, task_uuid=None, task_name=None,
-                      task_comment=None, in_assets=True):
-        raise NotImplementedError
+        """List task reports."""
+        return self._list("report", **kwargs)
 
     def get_report(self, uuid, **kwargs):
+        """Get task report by uuid."""
         return self._get('report', uuid=uuid)
 
     def download_report(self, uuid, format_uuid=None, as_element_tree=False):
@@ -209,10 +245,12 @@ class Client(object):
             return report
 
     def list_schedules(self, **kwargs):
-        return self._list("schedules", **kwargs)
+        """List schedules and filter by kwargs."""
+        return self._list("schedule", **kwargs)
 
     def create_schedule(self, name, comment=None, copy=None, first_time=None,
-                        duration=None, period=None, timezone=None):
+                        duration=None, duration_unit=None, period=None,
+                        period_unit=None, timezone=None):
         """Create an OpenVAS task schedule"""
         if comment is None:
             comment = ""
@@ -235,14 +273,14 @@ class Client(object):
 
         if duration is not None:
             data["duration"] = {
-                "text": duration.get("duration"),
-                "unit": duration.get("unit")
+                "#text": duration,
+                "unit": duration_unit
             }
 
         if period is not None:
             data["period"] = {
-                "text": period.get("period"),
-                "unit": period.get("unit")
+                "#text": period,
+                "unit": period_unit
             }
 
         if timezone is not None:
@@ -253,43 +291,55 @@ class Client(object):
         return self._create(request)
 
     def get_schedule(self, uuid, **kwargs):
+        """Get schedule by uuid."""
         return self._get('schedule', uuid=uuid)
 
-    def modify_schedule(self):
-        raise NotImplementedError
+    def modify_schedule(self, uuid, **kwargs):
+        """Modify schedule."""
+        if 'duration' in kwargs:
+            kwargs["duration"] = {
+                "#text": kwargs.pop('duration'),
+                "unit": kwargs.pop('duration_unit')
+            }
+
+        if 'period' in kwargs:
+            kwargs["period"] = {
+                "#text": kwargs.pop('period'),
+                "unit": kwargs.pop('period_unit')
+            }
+        return self._modify('schedule', uuid=uuid, **kwargs)
 
     def delete_schedule(self, uuid):
+        """Delete a schedule."""
         return self._delete('schedule', uuid=uuid)
 
-    def _command(self, request, callback=None):
-        """Send, build and validate response"""
+    def _command(self, request, cb=None):
+        """Send, build and validate response."""
         resp = self._send_request(request)
 
-        response = Response(req=request, resp=resp, callback=callback)
-        # valuuidate response, raise exceptions, if any
+        response = Response(req=request, resp=resp, cb=cb)
+        # validate response, raise exceptions, if any
         response.raise_for_status()
 
         return response
 
-    def _get(self, data_type, uuid, callback=None, **kwargs):
-        """Generic get function"""
+    def _get(self, data_type, uuid, cb=None):
+        """Generic get function."""
         request = etree.Element("get_{}s".format(data_type))
 
         request.set("{}_id".format(data_type), uuid)
 
-        if callback is None:
-            def callback(resp):
+        if cb is None:
+            def cb(resp):
                 return list(
                     lxml_to_dict(resp.find(data_type)).values()
                 )[0]
 
-        return self._command(request, callback)
+        return self._command(request, cb)
 
-    def _list(self, data_type, callback=None, **kwargs):
-        """Generic list function"""
-        request = etree.Element("get_{}".format(data_type))
-
-        request.set("{}_id".format(data_type), kwargs.pop("id", ""))
+    def _list(self, data_type, cb=None, **kwargs):
+        """Generic list function."""
+        request = etree.Element("get_{}s".format(data_type))
 
         if kwargs is not {}:
             def filter_str(k, v):
@@ -298,29 +348,28 @@ class Client(object):
             if filters:
                 request.set("filter", " ".join(filters))
 
-        response = self._command(request)
-        # send request and grab all data_type elements using lxml `findall`
-        items = response.xml.findall(data_type[:-1])
+        if cb is None:
+            def cb(resp):
+                return [lxml_to_dict(i, True) for i in resp.findall(data_type)]
 
-        if callback is None:
-            callback = self._get_default_callback()
+        response = self._command(request, cb=cb)
 
-        return [callback(element) for element in items]
+        return response
 
     def _create(self, request):
-        """generic create function"""
+        """generic create function."""
         return self._command(request)
 
     def _modify(self, data_type, uuid, **kwargs):
-        """Generic modify function"""
+        """Generic modify function."""
         request = dict_to_lxml("modify_{}".format(data_type), kwargs)
 
         request.set('{}_id'.format(data_type), uuid)
 
         return self._command(request)
 
-    def _delete(self, data_type, uuid, callback=None):
-        """Generic delete function"""
+    def _delete(self, data_type, uuid, cb=None):
+        """Generic delete function."""
         request = etree.Element("delete_{}".format(data_type))
 
         request.set("{}_id".format(data_type), uuid)
@@ -360,9 +409,3 @@ class Client(object):
     def __exit__(self, exc_type, ex_val, exc_tb):
         """Implements `with` context manager syntax"""
         self.close()
-
-    @staticmethod
-    def _get_default_callback():
-        def callback(element):
-            return list(lxml_to_dict(element).values())[0]
-        return callback

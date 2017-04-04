@@ -9,7 +9,7 @@ Usage:
 from conftest import slow
 
 @slow
-def test_poorly_coded_slow_test_that_takes_ages():
+def test_poorly_coded_slow_test_that_takes_ages_and_ages():
     pass
 """
 

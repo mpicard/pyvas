@@ -65,66 +65,64 @@ def test_response_callback():
     resp.set("status_text", "OK")
     resp.set("test_id", "1234")
 
-    def callback(x):
+    def cb(x):
         return utils.lxml_to_dict(x)
 
-    response = Response(req=req, resp=resp, callback=callback)
+    response = Response(req=req, resp=resp, cb=cb)
 
     assert response.ok
     assert isinstance(response.data, dict)
     assert response.data["test_response_callback"]["@status"] == "200"
 
-    def callback(x):
+    def cb(x):
         return "a"
 
-    response = Response(req=req, resp=resp, callback=callback)
+    response = Response(req=req, resp=resp, cb=cb)
 
     assert response.ok
     assert response.data == "a"
 
 
-def test_response_exceptions():
-    req = Element("bad_request")
-    resp = Element("bad_response")
-    resp.set("status", "None")
-    resp.set("status_test", "reason")
+@pytest.mark.parametrize(
+    "test_input, expected",
+    [
+        (('x', 'int cast'), TypeError),
+        (('400', 'exists'), exceptions.ElementExists),
+        (('400', 'bogus'), exceptions.InvalidArgumentError),
+        (('404', 'not found'), exceptions.ElementNotFound),
+        (('400', 'foo'), exceptions.HTTPError),
+        (('500', 'server'), exceptions.ServerError),
+    ]
+)
+def test_response_exceptions(mocker, test_input, expected):
+    req = Element('test')
+    resp = Element('test_response')
+    resp.set('status', test_input[0])
+    resp.set('status_text', test_input[1])
 
-    with pytest.raises(TypeError):
-        Response(req=req, resp=resp)
+    try:
+        cb = test_input[2]
+    except IndexError:
+        cb = None
 
-    resp.set("status", "400")
-
-    with pytest.raises(exceptions.ElementExists):
-        resp.set("status_text", "asdfasdf exists adsfasdlkf;ja")
-        response = Response(req=req, resp=resp)
-        assert response.ok is False
+    with pytest.raises(expected) as exc:
+        response = Response(req=req, resp=resp, cb=cb)
+        assert not response.ok
         response.raise_for_status()
+        assert str(exc)
 
-    with pytest.raises(exceptions.HTTPError):
-        resp.set("status_text", "asdfasdf")
-        response = Response(req=req, resp=resp)
-        assert response.ok is False
-        response.raise_for_status()
 
-    with pytest.raises(exceptions.HTTPError):
-        resp.set("status", "499")
-        resp.set("status_text", "nope")
-        response = Response(req=req, resp=resp)
-        response.raise_for_status()
+def test_response_result_error():
+    req = Element('test')
 
-    with pytest.raises(exceptions.HTTPError):
-        resp.set("status", "500")
-        resp.set("status_text", "server")
-        response = Response(req=req, resp=resp)
-        response.raise_for_status()
+    class BadResponse():
+        status = '400'
+        status_text = 'text'
+        tag = 'tag'
 
-    class Dummy(object):
-        tag = "dummy"
-        data = {"status": "400", "status_text": "dummy"}
+        def get(self, value, default=None):
+            return getattr(self, value, default)
 
-        def get(self, key, default=None):
-            return self.data.get(key, default)
-
-    with pytest.raises(exceptions.ResultError):
-        response = Response(req="req", resp=Dummy())
-        response.raise_for_status()
+    with pytest.raises(exceptions.ResultError) as exc:
+        Response(req=req, resp=BadResponse())
+        assert str(exc)

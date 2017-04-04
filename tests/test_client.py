@@ -22,12 +22,12 @@ from pyvas import Client, exceptions
 HOST = os.environ.get("OPENVAS_HOST")
 USERNAME = os.environ.get("OPENVAS_USER")
 PASSWORD = os.environ.get("OPENVAS_PASSWORD")
-NAME = str(uuid.uuid4())[:6]
+NAME = six.text_type(uuid.uuid4())[:6]
 LOCALHOST = "127.0.0.1"
 
 
 print("\n\n== Environ ==")
-print("NAME = {}".format(NAME))
+print("HOST = {}".format(HOST))
 print("=============\n")
 
 
@@ -37,7 +37,67 @@ slow = pytest.mark.skipif(
 )
 
 
-def test_environment():  # pragma: no cover
+@pytest.fixture(scope="module")
+def client(request):
+    with Client(HOST, username=USERNAME, password=PASSWORD) as cli:
+        yield cli
+
+
+@pytest.fixture(scope="function")
+def target(request, client):
+    try:
+        return client.list_targets(name=NAME).data[0]
+    except (exceptions.ElementNotFound, IndexError):
+        return client.create_target(name=NAME,
+                                    hosts=LOCALHOST,
+                                    comment="test")
+
+
+@pytest.fixture(scope="function")
+def config(request, client):
+    try:
+        return client.list_configs(name="empty").data[0]
+    except (exceptions.ElementNotFound, IndexError):
+        copy_uuid = client.list_configs(name="empty").data[0]["@id"]
+        return client.create_config(name=NAME, copy_uuid=copy_uuid)
+
+
+@pytest.fixture(scope="function")
+def scanner(request, client):
+    return client.list_scanners(name="OpenVAS Default").data[0]
+
+
+@pytest.fixture(scope="function")
+def task(request, client, target, config):
+    try:
+        return client.list_configs(name=NAME + "_fixture",
+                                   target_uuid=target["@id"],
+                                   config_uuid=config["@id"]).data[0]
+    except (exceptions.ElementNotFound, IndexError):
+        return client.create_task(name=NAME + "_fixture",
+                                  target_uuid=target["@id"],
+                                  config_uuid=config["@id"])
+
+
+@pytest.fixture(scope="function")
+def report(request, client):
+    report = client.list_reports(task=NAME, owner=USERNAME).data[0]
+    print(report)
+    return report
+
+
+@pytest.fixture(scope="function")
+def schedule(request, client):
+    try:
+        return client.list_schedules(name=NAME).data[0]
+    except (exceptions.ElementNotFound, IndexError):
+        ft = {'minute': 1, 'hour': 2, 'day_of_month': 3, 'year': '2017'}
+        return client.create_schedule(name=NAME, first_time=ft, duration=1,
+                                      duration_unit='day', period=2,
+                                      period_unit='week', timezone='UTC')
+
+
+def test_environment():
     __tracebackhide__ = True
     if HOST is None:
         pytest.fail("OpenVAS host required in env")
@@ -47,383 +107,236 @@ def test_environment():  # pragma: no cover
         pytest.fail("OpenVAS password required in env")
 
 
-def test_client_as_context_manager():
-    with Client(HOST, username=USERNAME, password=PASSWORD) as cli:
-        configs = cli.list_configs()
-        assert len(configs) > 2
+def test_client_authenticate():
+    client = Client(HOST)
+    client.socket = None
 
+    response = client.authenticate(username=USERNAME, password=PASSWORD)
+    assert response.ok
 
-def test_client_authenticate_error():
-    cli = Client(HOST)
-    cli.socket = None
+    client.username = USERNAME
+    client.password = PASSWORD
+    response = client.authenticate()
+    assert response.ok
 
     with pytest.raises(exceptions.AuthenticationError):
-        cli.authenticate(username=USERNAME, password="fake")
+        client.authenticate(username=USERNAME, password="fake")
 
 
-class TestClientBase(object):
-    """Abstract TestUnit Base Class for Testing `Client` methods"""
-
-    @classmethod
-    def setup_class(cls):
-        cls.cli = Client(HOST, username=USERNAME, password=PASSWORD)
-        cls.cli.open()
-
-    @classmethod
-    def teardown_class(cls):
-        cls.cli.close()
+def test_client_send_request(client):
+    response = client._send_request("<describe_auth/>")
+    assert etree.iselement(response)
 
 
-class TestTargets(TestClientBase):
+class TestClientGenericMethods(object):
 
-    def test_create_target(self):
-        response = self.cli.create_target(name=NAME,
-                                          hosts=LOCALHOST,
-                                          comment="test")
+    def test_list(self, client):
+        response = client._list('target')
+        assert response.ok
+
+    def test_get(self, client):
+        with pytest.raises(exceptions.ElementNotFound):
+            client._get('target',
+                        uuid=six.text_type(uuid.uuid4()),
+                        cb=lambda x: x)
+
+
+class TestTargets(object):
+
+    def test_create_target(self, client):
+        response = client.create_target(name=NAME,
+                                        hosts=LOCALHOST,
+                                        comment="test")
         assert response.ok and response.status_code == 201
 
-    def test_list_target(self):
-        try:
-            self.cli.create_target(name=NAME, hosts=LOCALHOST)
-        except exceptions.ElementExists:
-            pass
-        response = self.cli.list_targets()
-        assert response and isinstance(response, list)
+    def test_list_target(self, client):
+        response = client.list_targets()
+        assert response.ok
+        assert isinstance(response.data, list)
 
-        assert [target for target in response if target["name"] == NAME]
+    def test_list_filter_target(self, client):
+        response = client.list_targets(name=NAME)
+        assert response.ok
+        assert isinstance(response.data, list)
+        assert response.data[0]["name"] == NAME
 
-    def test_list_filter_target(self):
-        try:
-            self.cli.create_target(name=NAME, hosts=LOCALHOST)
-        except exceptions.ElementExists:
-            pass
-        response = self.cli.list_targets(name=NAME)
-        assert response[0]["name"] == NAME
-        assert response[0]["hosts"] == LOCALHOST
-
-    def test_get_target(self):
-        try:
-            target = self.cli.create_target(name=NAME, hosts=LOCALHOST)
-        except exceptions.ElementExists:
-            target = self.cli.list_targets(name=NAME)[0]
-        response = self.cli.get_target(uuid=target["@id"])
+    def test_get_target(self, client, target):
+        response = client.get_target(uuid=target["@id"])
         assert response.ok
         assert target["name"] == response["name"]
         assert target["@id"] == response["@id"]
 
-    def test_modify_target(self):
-        try:
-            target = self.cli.create_target(name=NAME, hosts=LOCALHOST)
-        except exceptions.ElementExists:
-            target = self.cli.list_targets(name=NAME)[0]
-        response = self.cli.modify_target(uuid=target["@id"],
-                                          hosts="10.10.10.10",
-                                          comment="I was modified, yay!")
+    def test_modify_target(self, client, target):
+        response = client.modify_target(uuid=target["@id"],
+                                        hosts="10.10.10.10",
+                                        comment="I was modified, yay!")
         assert response.ok
-        # validate attributes
-        target = self.cli.get_target(uuid=target["@id"])
+        # validate new attributes
+        target = client.get_target(uuid=target["@id"])
         assert target.ok
         assert target["hosts"] == '10.10.10.10'
         assert target["comment"] == "I was modified, yay!"
 
-    def test_delete_target(self):
-        try:
-            target = self.cli.create_target(name=NAME, hosts=LOCALHOST)
-        except exceptions.ElementExists:
-            target = self.cli.list_targets(name=NAME)[0]
-        response = self.cli.delete_target(uuid=target["@id"])
+    def test_delete_target(self, client, target):
+        response = client.delete_target(uuid=target["@id"])
         assert response.ok
 
 
-class TestConfigs(TestClientBase):
+class TestConfigs(object):
 
-    def test_create_config(self):
-        copy = self.cli.list_configs(name="empty")[0]
-        response = self.cli.create_config(name=NAME, copy_uuid=copy["@id"])
+    def test_create_config(self, client, config):
+        response = client.create_config(name=NAME, copy_uuid=config["@id"])
         assert response.ok
 
-    def test_list_config(self):
-        response = self.cli.list_configs()
-        assert isinstance(response, list)
-        assert len(response) > 1
+    def test_list_config(self, client):
+        response = client.list_configs()
+        assert response.ok
+        assert isinstance(response.data, list)
 
-    def test_list_filter_config(self):
-        response = self.cli.list_configs(name="Host Discovery")
-        assert isinstance(response, list)
-        assert len(response) == 1
-        assert response[0]["name"] == "Host Discovery"
+    def test_list_filter_config(self, client):
+        response = client.list_configs(name="Host Discovery")
+        assert response.ok
+        assert isinstance(response.data, list)
+        assert response.data[0]["name"] == "Host Discovery"
 
-    def test_get_config(self):
-        try:  # pragma: no cover
-            config = self.cli.list_configs(name=NAME)[0]
-        except IndexError:
-            copy = self.cli.list_configs(name="empty")[0]
-            config = self.cli.create_config(name=NAME, copy_uuid=copy["@id"])
-        response = self.cli.get_config(uuid=config["@id"])
-        assert response and config
-        assert isinstance(response, dict)
-        assert response["name"] == config["name"]
-        assert response["@id"] == config["@id"]
+    def test_get_config(self, client, config):
+        response = client.get_config(uuid=config["@id"])
+        assert response.ok
+        assert response.get('@id') == config["@id"]
 
-    def test_delete_config(self):
-        try:  # pragma: no cover
-            config = self.cli.list_configs(name=NAME)[0]
-        except IndexError:
-            copy = self.cli.list_configs(name="empty")[0]
-            config = self.cli.create_config(name=NAME, copy_uuid=copy["@id"])
-        response = self.cli.delete_config(uuid=config["@id"])
+    def test_delete_config(self, client, config):
+        empty = client.create_config(name="delete me",
+                                     copy_uuid=config["@id"])
+        response = client.delete_config(uuid=empty["@id"])
         assert response["@status"] == "200"
 
-    @classmethod
-    def teardown_class(cls):
-        try:  # pragma: no cover
-            config = cls.cli.list_configs(name=NAME)[0]
-            cls.cli.delete_config(uuid=config["@id"])
-        except IndexError:
-            pass
-        super(TestConfigs, cls).teardown_class()
 
+class TestScanners(object):
 
-class TestScanners(TestClientBase):
+    def test_list_scanner(self, client):
+        response = client.list_scanners()
+        assert response.ok
+        assert isinstance(response.data, list)
 
-    def test_list_scanner(self):
-        response = self.cli.list_scanners()
-        assert isinstance(response, list)
-        assert isinstance(response[0], dict)
+    def test_list_filter_scanner(self, client):
+        response = client.list_scanners(name="OpenVAS Default")
+        assert response.ok
+        assert isinstance(response.data, list)
+        assert response.data[0]['name'] == 'OpenVAS Default'
 
-    def test_list_filter_scanner(self):
-        response = self.cli.list_scanners(name="OpenVAS Default")
-        assert isinstance(response, list)
-        assert isinstance(response[0], dict)
-        assert len(response) == 1
-
-    def test_get_scanner(self):
-        try:  # pragma: no cover
-            scanner = self.cli.list_scanners(name="OpenVAS Default")[0]
-        except Exception as e:
-            raise e
-        response = self.cli.get_scanner(uuid=scanner["@id"])
-        assert response
+    def test_get_scanner(self, client, scanner):
+        response = client.get_scanner(uuid=scanner["@id"])
+        assert response.ok
         assert response["@id"] == scanner["@id"]
         assert response["name"] == scanner["name"]
 
 
-class TestReportFormats(TestClientBase):
+class TestReportFormats(object):
 
-    def test_list_report_format(self):
-        response = self.cli.list_report_formats()
-        assert isinstance(response, list)
-        assert isinstance(response[0], dict)
-        assert len(response) > 2
+    def test_list_report_format(self, client):
+        response = client.list_report_formats()
+        assert response.ok
+        assert isinstance(response.data, list)
 
-    def test_list_filter_report_format(self):
-        response = self.cli.list_report_formats(name="PDF")
-        assert response
-        assert isinstance(response, list)
-        assert len(response) == 1
-        assert isinstance(response[0], dict)
-        assert response[0]["name"] == "PDF"
+    def test_list_filter_report_format(self, client):
+        response = client.list_report_formats(name="PDF")
+        assert response.ok
+        assert isinstance(response.data, list)
+        assert response.data[0]["name"] == "PDF"
 
-    def test_get_report_format(self):
-        report_format = self.cli.list_report_formats(name="PDF")[0]
-        response = self.cli.get_report_format(uuid=report_format["@id"])
-        assert report_format
-        assert response
-        assert response["@id"] == report_format["@id"]
-        assert response["name"] == report_format["name"]
+    def test_get_report_format(self, client):
+        report_format = client.list_report_formats(name="PDF").data[0]
+        response = client.get_report_format(uuid=report_format["@id"])
+        assert response.ok
+        assert response.get("@id") == report_format["@id"]
 
 
-class TestTasks(TestClientBase):
+class TestTasks(object):
 
-    def test_create_task(self):
-        # Use simplest/fatests scan config
-        config = self.cli.list_configs(name="Host Discovery")[0]
-        try:  # pragma: no cover
-            target = self.cli.create_target(name=NAME, hosts=LOCALHOST)
-        except exceptions.ElementExists:
-            target = self.cli.list_targets(name=NAME)[0]
-
-        response = self.cli.create_task(name=NAME,
-                                        target_uuid=target["@id"],
-                                        config_uuid=config["@id"])
+    def test_create_task(self, mocker, client, config, target):
+        response = client.create_task(name=NAME,
+                                      target_uuid=target["@id"],
+                                      config_uuid=config["@id"])
         assert response
         assert response.ok
 
-    def test_list_tasks(self):
-        response = self.cli.list_tasks()
-        assert response and isinstance(response, list)
-        assert len(response)
+        # bad requests
+        mocker.patch('pyvas.Client.list_scanners',
+                     side_effect=exceptions.ElementNotFound)
+        with pytest.raises(exceptions.ElementNotFound):
+            response = client.create_task(name=NAME,
+                                          target_uuid=target["@id"],
+                                          config_uuid=config["@id"])
+        mocker.resetall()
 
-    def test_start_task(self):
-        try:  # pragma: no cover
-            task = self.cli.list_tasks(name=NAME)[0]
-        except IndexError:
-            # create missing task
-            config = self.cli.list_configs(name="Host Discovery")[0]
-            try:
-                target = self.cli.create_target(name=NAME, hosts=LOCALHOST)
-            except exceptions.ElementExists:
-                target = self.cli.list_targets(name=NAME)[0]
-            task = self.cli.create_task(name=NAME,
-                                        target_uuid=target["@id"],
-                                        config_uuid=config["@id"])
-        try:
-            response = self.cli.start_task(uuid=task["@id"])
-            assert response
-            assert response["@status"] == "202"
-            assert response["report_id"]
-        except exceptions.HTTPError as e:  # pragma: no cover
-            if "active already" in e.response.reason:
-                pass
+        with pytest.raises(exceptions.ElementNotFound):
+            response = client.create_task(name=NAME,
+                                          comment="comment",
+                                          target_uuid=target["@id"],
+                                          config_uuid=config["@id"],
+                                          scanner_uuid="fake")
 
-    def test_stop_task(self):
-        try:  # pragma: no cover
-            task = self.cli.list_tasks(name=NAME)[0]
-        except IndexError:
-            # create missing task
-            config = self.cli.list_configs(name="Host Discovery")[0]
-            try:
-                target = self.cli.create_target(name=NAME, hosts=LOCALHOST)
-            except exceptions.ElementExists:
-                target = self.cli.list_targets(name=NAME)[0]
-            task = self.cli.create_task(name=NAME,
-                                        target_uuid=target["@id"],
-                                        config_uuid=config["@id"])
+    def test_list_tasks(self, client):
+        response = client.list_tasks()
+        assert response.ok
+        assert isinstance(response.data, list)
 
-        response = self.cli.stop_task(uuid=task["@id"])
-        assert response
-        assert response["@status"] == "202"
+    def test_get_task(self, client, task):
+        response = client.get_task(uuid=task["@id"])
+        assert response.ok
 
-    def test_get_task(self):
-        try:  # pragma: no cover
-            task = self.cli.list_tasks(name=NAME)[0]
-        except IndexError:
-            # create missing task
-            config = self.cli.list_configs(name="Host Discovery")[0]
-            try:
-                target = self.cli.create_target(name=NAME, hosts=LOCALHOST)
-            except exceptions.ElementExists:
-                target = self.cli.list_targets(name=NAME)[0]
-            task = self.cli.create_task(name=NAME,
-                                        target_uuid=target["@id"],
-                                        config_uuid=config["@id"])
+    def test_start_task(self, client, task):
+        response = client.start_task(uuid=task["@id"])
+        assert response.ok
 
-        response = self.cli.get_task(uuid=task["@id"])
-        assert response
-        assert isinstance(response, dict)
-        assert response["@id"] == task["@id"]
-        assert response["name"] == task["name"]
+    def test_stop_task(self, client, task):
+        response = client.stop_task(uuid=task["@id"])
+        assert response.ok
 
     @slow
-    def test_resume_task(self):
-        try:  # pragma: no cover
-            task = self.cli.list_tasks(name=NAME)[0]
-        except IndexError:
-            # create missing task
-            config = self.cli.list_configs(name="Host Discovery")[0]
-            try:
-                target = self.cli.create_target(name=NAME, hosts=LOCALHOST)
-            except exceptions.ElementExists:
-                target = self.cli.list_targets(name=NAME)[0]
-            task = self.cli.create_task(name=NAME,
-                                        target_uuid=target["@id"],
-                                        config_uuid=config["@id"])
-        try:  # pragma: no cover
-            self.cli.start_task(uuid=task["@id"])
-        except exceptions.HTTPError as e:
-            if "active already" in e.response.reason:
-                pass
-
+    def test_resume_task(self, client, task):
         while True:
-            response = self.cli.get_task(uuid=task["@id"])
-            if response["status"] == "Stopped":
+            response = client.get_task(uuid=task["@id"])
+            print(response.data["status"])
+            if response.data['status'].lower() == "new":
+                client.start_task(uuid=task["@id"])
+            if response.data["status"].lower() == "running":
+                client.stop_task(uuid=task["@id"])
+            if response.data["status"].lower() == "stopped":
                 break
             time.sleep(2)
-        response = self.cli.resume_task(uuid=task["@id"])
-        assert response and response.ok and response.status_code == 202
-        assert response["@status"] == "202"
+        response = client.resume_task(uuid=task["@id"])
+        assert response.ok
+
+    def test_delet_task(self, client, task):
+        response = client.delete_task(uuid=task["@id"])
+        assert response.ok
+
+
+class TestReports(object):
 
     @slow
-    def test_delete_task(self):
-        try:  # pragma: no cover
-            task = self.cli.list_tasks(name=NAME)[0]
-        except IndexError:
-            # create missing task
-            config = self.cli.list_configs(name="Host Discovery")[0]
-            try:
-                target = self.cli.create_target(name=NAME, hosts=LOCALHOST)
-            except exceptions.ElementExists:
-                target = self.cli.list_targets(name=NAME)[0]
-            task = self.cli.create_task(name=NAME,
-                                        target_uuid=target["@id"],
-                                        config_uuid=config["@id"])
-
-        while True:
-            response = self.cli.get_task(uuid=task["@id"])
-            if response["status"] in ("Done", "Stopped"):
-                break
-            time.sleep(2)
-        response = self.cli.delete_task(uuid=task["@id"])
-        assert response and response.ok and response.status_code == 200
-        assert response["@status"] == "200"
-
-
-class TestReports(TestClientBase):
+    def test_list_reports(self, client):
+        response = client.list_reports(task=NAME, owner=USERNAME)
+        assert response.ok
+        assert isinstance(response.data, list)
 
     @slow
-    def test_list_reports(self):
-        response = self.cli.list_reports(task=NAME, owner=USERNAME)
-        assert response
-        assert isinstance(response, list)
-        assert len(response) >= 1
-        assert isinstance(response[0], dict)
-
-    @slow
-    def test_get_report(self):
-        try:  # pragma: no cover
-            report = self.cli.list_reports(task=NAME, owner=USERNAME)[0]
-        except IndexError:
-            # make task and report
-            try:
-                task = self.cli.list_tasks(name=NAME)[0]
-            except IndexError:
-                # create missing task
-                config = self.cli.list_configs(name="Host Discovery")[0]
-                try:
-                    target = self.cli.create_target(name=NAME,
-                                                    hosts=LOCALHOST)
-                except exceptions.ElementExists:
-                    target = self.cli.list_targets(name=NAME)[0]
-                task = self.cli.create_task(name=NAME,
-                                            target_uuid=target["@id"],
-                                            config_uuid=config["@id"])
-            content = {"test": "test"}
-            report = self.cli.create_report(content, task_uuid=task["@id"])
-            assert report and report["@status"] == "201"
-
-        response = self.cli.get_report(uuid=report["@id"])
+    def test_get_report(self, client, report):
+        response = client.get_report(uuid=report["@id"])
         assert response.ok and response.status_code == 200
 
     @slow
-    def test_download_report_with_xml_format(self):
-        try:  # pragma: no cover
-            report = self.cli.list_reports(task=NAME, owner=USERNAME)[0]
-        except IndexError:
-            assert False, "Failed to download report"
-        response = self.cli.download_report(uuid=report["@id"])
+    def test_download_report_with_xml_format(self, client, report):
+        response = client.download_report(uuid=report["@id"])
         assert etree.iselement(response)
         assert response.attrib["id"] == report["@id"]
 
     @slow
-    def test_download_report_with_html_format(self):
-        try:  # pragma: no cover
-            report = self.cli.list_reports(task=NAME, owner=USERNAME)[0]
-        except IndexError:
-            assert False
-        report_format = self.cli.list_report_formats(name="HTML")[0]
-
-        response = self.cli.download_report(uuid=report["@id"],
-                                            format_uuid=report_format["@id"])
+    def test_download_report_with_html_format(self, client, report):
+        r_format = client.list_report_formats(name="HTML").data[0]
+        response = client.download_report(uuid=report["@id"],
+                                          format_uuid=r_format["@id"])
         assert isinstance(response, six.string_types)
         parser = HTMLParser()
         parser.feed(response)
@@ -431,20 +344,32 @@ class TestReports(TestClientBase):
         assert parser
 
 
-class TestSchedules(TestClientBase):
+class TestSchedules(object):
 
-    def test_create_schedule(self):
-        # TODO
-        pass
+    def test_create_schedule(self, client):
+        ft = {'minute': 1, 'hour': 2, 'day_of_month': 3, 'year': '2017'}
+        response = client.create_schedule(name=NAME, first_time=ft,
+                                          duration=1, duration_unit='day',
+                                          period=2, period_unit='week',
+                                          timezone='UTC')
+        assert response.ok
 
-    def test_list_schedules(self):
-        # TODO
-        pass
+    def test_get_schedule(self, client, schedule):
+        response = client.get_schedule(schedule["@id"])
+        assert response.ok
+        assert response.get('name') == schedule.get('name')
 
-    def test_delete_schedule(self):
-        # TODO
-        pass
+    def test_list_schedules(self, client):
+        response = client.list_schedules()
+        assert response.ok
+        assert isinstance(response.data, list)
 
-    def test_modify_schedule(self):
-        # TODO
-        pass
+    def test_modify_schedule(self, client, schedule):
+        response = client.modify_schedule(uuid=schedule["@id"],
+                                          period=3, period_unit='year',
+                                          duration=2, duration_unit='week')
+        assert response.ok
+
+    def test_delete_schedule(self, client, schedule):
+        response = client.delete_schedule(uuid=schedule["@id"])
+        assert response.ok
