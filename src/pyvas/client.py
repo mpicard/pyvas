@@ -234,9 +234,12 @@ class Client(object):
             request.set("format_id", format_uuid)
 
         if kwargs is not {}:
+
             def filter_str(k, v):
                 return "{}=\"{}\"".format(k, v)
+
             filters = [filter_str(k, v) for k, v in six.iteritems(kwargs) if v]
+
             if filters:
                 request.set("filter", " ".join(filters))
 
