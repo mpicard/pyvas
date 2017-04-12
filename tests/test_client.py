@@ -82,7 +82,6 @@ def task(request, client, target, config):
 @pytest.fixture(scope="function")
 def report(request, client):
     report = client.list_reports(task=NAME, owner=USERNAME).data[0]
-    print(report)
     return report
 
 

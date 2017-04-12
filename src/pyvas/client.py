@@ -223,7 +223,8 @@ class Client(object):
         """Get task report by uuid."""
         return self._get('report', uuid=uuid)
 
-    def download_report(self, uuid, format_uuid=None, as_element_tree=False):
+    def download_report(self, uuid, format_uuid=None, as_element_tree=False,
+                        **kwargs):
         """Get XML or base64 encoded report contents"""
         request = etree.Element("get_reports")
 
@@ -231,6 +232,13 @@ class Client(object):
 
         if format_uuid is not None:
             request.set("format_id", format_uuid)
+
+        if kwargs is not {}:
+            def filter_str(k, v):
+                return "{}=\"{}\"".format(k, v)
+            filters = [filter_str(k, v) for k, v in six.iteritems(kwargs) if v]
+            if filters:
+                request.set("filter", " ".join(filters))
 
         response = self._command(request)
 
@@ -252,24 +260,14 @@ class Client(object):
                         duration=None, duration_unit=None, period=None,
                         period_unit=None, timezone=None):
         """Create an OpenVAS task schedule"""
-        if comment is None:
-            comment = ""
 
-        data = {
-            "name": name,
-            "comment": comment
-        }
+        data = {"name": name}
 
         if copy is not None:
             data["copy"] = copy
 
         if first_time is not None:
-            data["first_time"] = {
-                "minute": first_time.get("minute"),
-                "hour": first_time.get("hour"),
-                "day_of_month": first_time.get("day_of_month"),
-                "year": first_time.get("year")
-            }
+            data["first_time"] = first_time
 
         if duration is not None:
             data["duration"] = {
@@ -282,6 +280,9 @@ class Client(object):
                 "#text": period,
                 "unit": period_unit
             }
+
+        if comment is not None:
+            data["comment"] = comment
 
         if timezone is not None:
             data["timezone"] = timezone
