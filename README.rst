@@ -19,8 +19,8 @@ Usage
 
 .. code-block:: python
     
-    >>> from pyvas import client
-    >>> with client(hostname, username='username', password='password') as cli:
+    >>> from pyvas import Client
+    >>> with Client(hostname, username='username', password='password') as cli:
     >>>     r = cli.list_tasks()
     >>>     r.ok
     True
