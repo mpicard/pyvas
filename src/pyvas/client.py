@@ -95,14 +95,20 @@ class Client(object):
         """Returns a single target using an @id."""
         return self._get("target", uuid=uuid)
 
-    def create_target(self, name, hosts, comment=None):
+    def create_target(self, name, hosts, port_list=None, ssh_credential=None, comment=None):
         """Creates a target of hosts."""
         if comment is None:
             comment = ""
 
+        data = {"name": name, "hosts": hosts, "comment": comment}
+        if port_list:
+            data.update({"port_list": {'@id': port_list}})
+        if ssh_credential:
+            data.update({"ssh_credential": {'@id': ssh_credential}})
+
         request = dict_to_lxml(
             "create_target",
-            {"name": name, "hosts": hosts, "comment": comment}
+            data
         )
 
         return self._create(request)
@@ -160,6 +166,18 @@ class Client(object):
     def get_task(self, uuid):
         """Get task with uuid."""
         return self._get("task", uuid=uuid)
+
+    def create_credential(self, name, login, password):
+        data = {
+            "name": name,
+            "login": login,
+            "password": password
+        }
+        request = dict_to_lxml("create_credential", data)
+
+        # print_xml(request)
+
+        return self._create(request)
 
     def create_task(self, name, config_uuid, target_uuid,
                     scanner_uuid=None, comment=None, schedule_uuid=None):
