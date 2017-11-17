@@ -140,6 +140,35 @@ class TestClientGenericMethods(object):
                         cb=lambda x: x)
 
 
+class TestPortLists(object):
+    def test_create_port_list(self, client):
+        response = client.create_port_list(name=NAME,
+                                           port_range="T:500-600,U:700-800",
+                                           comment="test")
+
+        assert response.ok and response.status_code == 201
+
+    def test_list_port_list(self, client):
+        response = client.list_port_lists()
+        assert response.ok
+        assert isinstance(response.data, list)
+
+    def test_list_filter_port_list(self, client):
+        response = client.list_port_lists(name=NAME)
+        assert response.ok
+        assert isinstance(response.data, list)
+
+    def test_get_port_list(self, client, port_list):
+        response = client.get_port_list(uuid=port_list["@id"])
+        assert response.ok
+        assert port_list["name"] == response["name"]
+        assert port_list["@id"] == response["@id"]
+
+    def test_delete_port_list(self, client, port_list):
+        response = client.delete_port_list(uuid=port_list["@id"])
+        assert response.ok
+
+
 class TestTargets(object):
 
     def test_create_target(self, client):

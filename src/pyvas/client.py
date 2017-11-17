@@ -87,6 +87,32 @@ class Client(object):
         except HTTPError:
             raise AuthenticationError(username)
 
+    def list_port_lists(self, **kwargs):
+        """Returns list of port lists, filtering via kwargs"""
+        return self._list("port_list", **kwargs)
+
+    def get_port_list(self, uuid):
+        """Returns a single port list using an @id"""
+        return self._get("port_list", uuid=uuid)
+
+    def create_port_list(self, name, port_range, comment=None):
+        """Creates a list of ports"""
+        if comment is None:
+            comment = ""
+
+        data = {"name": name, "port_range": port_range, "comment": comment}
+
+        request = dict_to_lxml(
+            "create_port_list",
+            data
+        )
+
+        return self._create(request)
+
+    def delete_port_list(self, uuid):
+        """Delete a port list."""
+        return self._delete("port_list", uuid=uuid)
+
     def list_targets(self, **kwargs):
         """Returns list of targets, filtering via kwargs"""
         return self._list("target", **kwargs)
