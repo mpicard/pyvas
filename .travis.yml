@@ -1,22 +1,26 @@
-
 language: python
 python:
-  - "2.7"
-  - "3.5"
-  - "3.6"
+- '2.7'
+- '3.5'
+- '3.6'
 install:
-  - "pip install tox-travis coverage coveralls"
+- pip install tox-travis coverage coveralls
 script:
-  - tox -v
+- tox -v
 after_success:
-  - coverage combine --append
-  - coverage report
-  - coveralls
+- coverage combine --append
+- coverage report
+- coveralls
 after_failure:
-  - more .tox/log/* | cat
-  - more .tox/log/* | cat
+- more .tox/log/* | cat
+- more .tox/log/* | cat
 before_cache:
-  - rm -rf $HOME/.cache/pip/log
+- rm -rf $HOME/.cache/pip/log
 cache:
   directories:
-    - $HOME/.cache/pip
+  - "$HOME/.cache/pip"
+deploy:
+  provider: pypi
+  user: martin8768
+  password:
+    secure: TOGwCxGFYOTP+NRlwC0QDVdDA9E8px56yqRy4iI6f+qDFC8zlY9NrGlW+KLXqAMHkApERQHBmIQS8NyofTX4iujAa8XjZDMA6wtjfN0zWw2TcRjv1SeO1vrfVctFJkwJKdwTXzWI3s04Voh/DPuUWy73Ma/XxueCimlA6bRpM/yCMC6X7WOb13EnQyvgm+kaBlVKHRcQi75Pb7B6bpSegpqYO8YjDkKqgSwsR4P+WNw7lYv405CAiLVQ8Us3lm5Jz0fTIQW3RZyMbXreh3PNqyqQfNTCHKk7V8o+/ZqT1tw0Y0WNlY2Fv2IYpmNf0WHp71Efy7ckI0TRPAKcq5ma4JFXSmbehDj3jDPvOQ6NEAt2JzHjZDzR/9qU2cauIoddCwMkjSPoV5BeEh1AZ29yUeyshycC85ZHb0D/kqBRHJi5S+XSjRv0jFQhdtxOZt4miEH3xfz8PxjZDwheQvEL6ZdyVlpG8bjncbsm+M0HSV9fb1HuJxUj37B9dHt3gM9FEv4F7evlbQflKyASLcYm7XkdgYArp8sVDAHQn39b2VhuFGf2AYXOktjxMHp/kq5UdxAFbn+2fwBeSX6AigjH7sn6KWc+2YpRAsLJp6E8B2+3g6scdHw+QzaHT0O3krY9ziURj8HJoeFIGogXZtqnuQQAk+ZxRGcpwIRGTrG47Wg=
