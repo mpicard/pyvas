@@ -121,7 +121,7 @@ class Client(object):
         """Returns a single target using an @id."""
         return self._get("target", uuid=uuid)
 
-    def create_target(self, name, hosts, port_list=None, ssh_credential=None, comment=None):
+    def create_target(self, name, hosts, port_list=None, ssh_credential=None, alive_tests=None, comment=None):
         """Creates a target of hosts."""
         if comment is None:
             comment = ""
@@ -129,6 +129,8 @@ class Client(object):
         data = {"name": name, "hosts": hosts, "comment": comment}
         if port_list:
             data.update({"port_list": {'@id': port_list}})
+        if alive_tests:
+            data.update({"alive_tests": alive_tests})
         if ssh_credential:
             data.update({"ssh_credential": {'@id': ssh_credential}})
 
@@ -136,7 +138,6 @@ class Client(object):
             "create_target",
             data
         )
-
         return self._create(request)
 
     def modify_target(self, uuid, **kwargs):
