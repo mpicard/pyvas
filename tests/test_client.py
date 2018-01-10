@@ -19,22 +19,11 @@ except ImportError:
 from pyvas import Client, exceptions
 
 
-HOST = os.environ.get("OPENVAS_HOST")
-USERNAME = os.environ.get("OPENVAS_USER")
-PASSWORD = os.environ.get("OPENVAS_PASSWORD")
+HOST = "localhost"
+USERNAME = "admin"
+PASSWORD = "admin"
 NAME = six.text_type(uuid.uuid4())[:6]
 LOCALHOST = "127.0.0.1"
-
-
-print("\n\n== Environ ==")
-print("HOST = {}".format(HOST))
-print("=============\n")
-
-
-slow = pytest.mark.skipif(
-    not pytest.config.getoption("--slow"),
-    reason="need --slow option to run"
-)
 
 
 @pytest.fixture(scope="module")
@@ -332,7 +321,6 @@ class TestTasks(object):
         response = client.stop_task(uuid=task["@id"])
         assert response.ok
 
-    @slow
     def test_resume_task(self, client, task):
         while True:
             response = client.get_task(uuid=task["@id"])
@@ -354,33 +342,19 @@ class TestTasks(object):
 
 class TestReports(object):
 
-    @slow
     def test_list_reports(self, client):
         response = client.list_reports(task=NAME, owner=USERNAME)
         assert response.ok
         assert isinstance(response.data, list)
 
-    @slow
     def test_get_report(self, client, report):
         response = client.get_report(uuid=report["@id"])
         assert response.ok and response.status_code == 200
 
-    @slow
     def test_download_report_with_xml_format(self, client, report):
         response = client.download_report(uuid=report["@id"])
         assert etree.iselement(response)
         assert response.attrib["id"] == report["@id"]
-
-    @slow
-    def test_download_report_with_html_format(self, client, report):
-        r_format = client.list_report_formats(name="HTML").data[0]
-        response = client.download_report(uuid=report["@id"],
-                                          format_uuid=r_format["@id"])
-        assert isinstance(response, six.string_types)
-        parser = HTMLParser()
-        parser.feed(response)
-        parser.close()
-        assert parser
 
 
 class TestSchedules(object):

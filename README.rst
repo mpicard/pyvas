@@ -11,14 +11,14 @@ Installation
 To install pyvas, simply run:
 
 .. code-block:: bash
-    
+
     $ pip install pyvas
 
 Usage
 -----
 
 .. code-block:: python
-    
+
     >>> from pyvas import Client
     >>> with Client(hostname, username='username', password='password') as cli:
     >>>     r = cli.list_tasks()
@@ -43,7 +43,7 @@ How to Contribute
 
 #. Look for open issues or report an issue
 #. Checkout a new branch from master and work away
-#. Remember to include tests 
+#. Remember to include tests
 #. Submit a pull request!
 
 .. |Build Status| image:: https://travis-ci.org/mpicard/pyvas.svg?branch=master
