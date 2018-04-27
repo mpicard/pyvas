@@ -186,14 +186,6 @@ class Client(object):
         """Get report format with uuid."""
         return self._get("report_format", uuid=uuid)
 
-    def list_tasks(self, **kwargs):
-        """List tasks with kwargs filtering."""
-        return self._list("task", **kwargs)
-
-    def get_task(self, uuid):
-        """Get task with uuid."""
-        return self._get("task", uuid=uuid)
-
     def create_credential(self, name, login, password):
         data = {
             "name": name,
@@ -205,6 +197,14 @@ class Client(object):
         # print_xml(request)
 
         return self._create(request)
+
+    def list_tasks(self, **kwargs):
+        """List tasks with kwargs filtering."""
+        return self._list("task", **kwargs)
+
+    def get_task(self, uuid):
+        """Get task with uuid."""
+        return self._get("task", uuid=uuid)
 
     def create_task(self, name, config_uuid, target_uuid,
                     scanner_uuid=None, comment=None, schedule_uuid=None):
@@ -361,6 +361,22 @@ class Client(object):
     def delete_schedule(self, uuid):
         """Delete a schedule."""
         return self._delete('schedule', uuid=uuid)
+
+    def list_nvts(self, **kwargs):
+        """List NVTs with kwargs filters"""
+        return self._list("nvt", **kwargs)
+
+    def get_nvt(self, uuid):
+        """Returns a single NVT using an @id."""
+        return self._get("nvt", uuid=uuid)
+
+    def list_nvt_families(self, **kwargs):
+        """List NVT families with kwargs filters"""
+        return self._list("nvt_family", **kwargs)
+
+    def list_nvt_family(self, uuid):
+        """Returns a single NVT family using an @id."""
+        return self._get("nvt_family", uuid=uuid)
 
     def _command(self, request, cb=None):
         """Send, build and validate response."""
