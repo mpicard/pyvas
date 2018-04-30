@@ -362,22 +362,27 @@ class Client(object):
         """Delete a schedule."""
         return self._delete('schedule', uuid=uuid)
 
-    def list_nvts(self, **kwargs):
-        """List NVTs with kwargs filters"""
-        return self._list("nvt", **kwargs)
+    def list_nvts(self):
+        """List NVTs including details."""
+        request = etree.Element("get_nvts", details="1")
+        resp = self._send_request(request)
+
+        response = Response(req=request, resp=resp, cb=None)
+        # validate response, raise exceptions, if any
+        response.raise_for_status()
+
+        return response['nvt']
 
     def get_nvt(self, uuid):
-        """Returns a single NVT using an @id."""
-        return self._get("nvt", uuid=uuid)
+        """Returns a single NVT using an @nvt_oid."""
+        request = etree.Element("nvt", uuid=uuid)
 
-    def list_nvt_families(self, **kwargs):
-        """List NVT families with kwargs filters"""
-        return self._list("nvt_family", **kwargs)
-
-    def list_nvt_family(self, uuid):
-        """Returns a single NVT family using an @id."""
-        return self._get("nvt_family", uuid=uuid)
-
+    def list_nvt_families(self):
+        """List NVT families."""
+        request = etree.Element("get_nvt_families")
+        response = self._command(request, cb=None)
+        return response['families']['family']
+    
     def _command(self, request, cb=None):
         """Send, build and validate response."""
         resp = self._send_request(request)
