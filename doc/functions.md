@@ -70,7 +70,7 @@ functionality hasn't yet been implemented in pyvas.
 | get_info        | | Get information for items of a given type |
 | get_notes       | | Get one or many notes |
 | get_nvts        |list_nvts, get_nvt | Get one or many NVTs |
-| get_nvt_families | list_nvt_families, get_nvt_family | Get one or many NVT families |
+| get_nvt_families | list_nvt_families | Get list of NVT families |
 | get_overrides   | | Get one or many overrides |
 | get_permissions | | Get one or many permissions |
 | get_port_lists  | list_port_lists, get_port_list | Get one or many port lists |
