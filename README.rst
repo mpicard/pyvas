@@ -35,7 +35,7 @@ Usage
 Documentation
 -------------
 
-Documentation is currently a work in progress, please check back soon.
+Documentation is in the doc directory.
 
 
 How to Contribute
