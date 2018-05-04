@@ -197,7 +197,15 @@ class Client(object):
     def list_tasks(self, **kwargs):
         """List tasks with kwargs filtering."""
         return self._list("task", **kwargs)
-
+        
+    def map_task_names(self):
+		"""Return a dictionary of task names mapped to ids."""
+		tasks = self.list_tasks()
+		task_map = {}
+		for task in tasks:
+			task_map[task["name"]] = task["@id"]
+		return task_map
+	
     def get_task(self, uuid):
         """Get task with uuid."""
         return self._get("task", uuid=uuid)
@@ -239,18 +247,30 @@ class Client(object):
         request = etree.Element("start_task")
         request.set("task_id", uuid)
         return self._command(request)
+        
+    def start_task_by_name(self, task_name):
+		"""Start a task by name."""
+		self.start_task(self.map_task_names()[task_name])
 
     def stop_task(self, uuid):
         """stop a task."""
         request = etree.Element("stop_task")
         request.set("task_id", uuid)
         return self._command(request)
+        
+    def stop_task_by_name(self, task_name):
+		"""Stop a task by name."""
+		self.stop_task(self.map_task_names()[task_name])
 
     def resume_task(self, uuid):
         """Resume a stopped task."""
         request = etree.Element("resume_task")
         request.set("task_id", uuid)
         return self._command(request)
+        
+    def resume_task_by_name(self, task_name):
+		"""Resume a task by name."""
+		self.resume_task(self.map_task_names()[task_name])
 
     def delete_task(self, uuid):
         """Delete a task."""
