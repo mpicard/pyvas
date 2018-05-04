@@ -109,10 +109,6 @@ class Client(object):
 
         return self._create(request)
 
-    def delete_port_list(self, uuid):
-        """Delete a port list."""
-        return self._delete("port_list", uuid=uuid)
-
     def list_targets(self, **kwargs):
         """Returns list of targets, filtering via kwargs"""
         return self._list("target", **kwargs)
@@ -267,6 +263,10 @@ class Client(object):
     def get_report(self, uuid, **kwargs):
         """Get task report by uuid."""
         return self._get('report', uuid=uuid)
+
+    def delete_report(self, uuid):
+        """Delete a report."""
+        return self._delete("report", uuid=uuid)
 
     def download_report(self, uuid, format_uuid=None, as_element_tree=False,
                         **kwargs):
