@@ -144,13 +144,57 @@ class Client(object):
         """Deletes a target with given id."""
         return self._delete("target", uuid=uuid)
 
+    def map_config_names(self):
+        """Return a dictionary of config names mapped to ids."""
+        return self._map("config")
+
     def list_configs(self, **kwargs):
         """List configs and filter using kwargs."""
         return self._list("config", **kwargs)
 
-    def get_config(self, uuid):
-        """Get config using uuid."""
-        return self._get("config", uuid=uuid)
+    def get_config(self, uuid, details=False, families=False, preferences=False, tasks=False):
+        """Get config using uuid.
+        
+        For further details set options to 1:
+        * details: get config families, preferences, nvt selectors, and tasks
+        * families: include families if details option not selected
+        * preferences: include preferences (including list of NVTs) if details option not selected
+        * tasks: include tasks using this config if details option not selected
+        """
+        d = f = p = t ='-'
+        if details:
+            d = '1'
+        if families:
+            f = '1'
+        if preferences:
+            p = '1'
+        if tasks:
+            t = '1'
+        request = etree.Element("get_configs", 
+            config_id=uuid, 
+            details=d, 
+            families=f, 
+            preferences=p, 
+            tasks=t)
+        resp = self._send_request(request)
+        response = Response(req=request, resp=resp, cb=None)
+        # validate response, raise exceptions, if any
+        response.raise_for_status()
+        
+        return response['config']       
+
+    def get_config_by_name(self, config, **kwargs):
+        """Get config using name."""
+        return self.get_config(self.map_config_names()[config], **kwargs)
+
+    def list_config_nvts(self, uuid):
+        """Returns a list of oids of nvts called by the given config."""
+        config = self.get_config(uuid, preferences=True)
+        nvts = []
+        for nvt in config['preferences']['preference']:
+            if nvt['nvt']['@oid'] != '':
+                nvts += [nvt['nvt']['@oid']]
+        return nvts
 
     def create_config(self, name, copy_uuid=None, **kwargs):
         """Creates a new config or copies an existing config using the id of
@@ -161,10 +205,19 @@ class Client(object):
         data.update(kwargs)
         request = dict_to_lxml("create_config", data)
         return self._create(request)
+        
+    def copy_config_by_name(self, original, copy):
+        """Creates a new config by copying an existing one 
+        referred to by name"""
+        return self.create_config(copy, copy_uuid=self.map_config_names()[original])
 
     def delete_config(self, uuid):
         """Delete a config with uuid."""
         return self._delete("config", uuid=uuid)
+        
+    def delete_config_by_name(self, config):
+        """Delete a config using its name."""
+        return self._delete("config", self.map_config_names()[config])
 
     def list_scanners(self, **kwargs):
         """List scanners and filter using kwargs."""
@@ -199,13 +252,9 @@ class Client(object):
         return self._list("task", **kwargs)
         
     def map_task_names(self):
-		"""Return a dictionary of task names mapped to ids."""
-		tasks = self.list_tasks()
-		task_map = {}
-		for task in tasks:
-			task_map[task["name"]] = task["@id"]
-		return task_map
-	
+        """Return a dictionary of task names mapped to ids."""
+        return self._map("task")
+    
     def get_task(self, uuid):
         """Get task with uuid."""
         return self._get("task", uuid=uuid)
@@ -249,8 +298,8 @@ class Client(object):
         return self._command(request)
         
     def start_task_by_name(self, task_name):
-		"""Start a task by name."""
-		self.start_task(self.map_task_names()[task_name])
+        """Start a task by name."""
+        self.start_task(self.map_task_names()[task_name])
 
     def stop_task(self, uuid):
         """stop a task."""
@@ -259,8 +308,8 @@ class Client(object):
         return self._command(request)
         
     def stop_task_by_name(self, task_name):
-		"""Stop a task by name."""
-		self.stop_task(self.map_task_names()[task_name])
+        """Stop a task by name."""
+        self.stop_task(self.map_task_names()[task_name])
 
     def resume_task(self, uuid):
         """Resume a stopped task."""
@@ -269,8 +318,8 @@ class Client(object):
         return self._command(request)
         
     def resume_task_by_name(self, task_name):
-		"""Resume a task by name."""
-		self.resume_task(self.map_task_names()[task_name])
+        """Resume a task by name."""
+        self.resume_task(self.map_task_names()[task_name])
 
     def delete_task(self, uuid):
         """Delete a task."""
@@ -426,6 +475,14 @@ class Client(object):
                 )[0]
 
         return self._command(request, cb)
+
+    def _map(self, data_type):
+        """Generic function to map names to ids"""
+        List = self._list(data_type)
+        Map = {}
+        for Item in List:
+            Map[Item["name"]] = Item["@id"]
+        return Map
 
     def _list(self, data_type, cb=None, **kwargs):
         """Generic list function."""
