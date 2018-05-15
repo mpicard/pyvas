@@ -53,7 +53,7 @@ class Client(object):
         """Open socket connection and authenticate client."""
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket = sock = ssl.wrap_socket(sock)
-        sock.connect((self.host, self.port))
+        sock.connect((self.host, int(self.port)))
         self.authenticate(username, password)
 
     def close(self):
@@ -66,7 +66,7 @@ class Client(object):
         if self.socket is None:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket = sock = ssl.wrap_socket(sock)
-            sock.connect((self.host, self.port))
+            sock.connect((self.host, int(self.port)))
 
         if username is None:
             username = self.username
@@ -94,6 +94,10 @@ class Client(object):
     def get_port_list(self, uuid):
         """Returns a single port list using an @id"""
         return self._get("port_list", uuid=uuid)
+
+    def delete_port_list(self, uuid):
+        """Delete a port list."""
+        return self._delete("port_list", uuid=uuid)
 
     def create_port_list(self, name, port_range, comment=None):
         """Creates a list of ports"""
@@ -161,7 +165,7 @@ class Client(object):
         * preferences: include preferences (including list of NVTs) if details option not selected
         * tasks: include tasks using this config if details option not selected
         """
-        d = f = p = t ='-'
+        d = f = p = t ='0'
         if details:
             d = '1'
         if families:
@@ -195,6 +199,15 @@ class Client(object):
             if nvt['nvt']['@oid'] != '':
                 nvts += [nvt['nvt']['@oid']]
         return nvts
+        
+    def list_config_families(self, uuid):
+        """Returns a list of oids of nvt families called by the given config."""
+        config = self.get_config(uuid, families=True)
+        families = []
+        for family in config['families']['family']:
+            if family['name'] != '':
+                families += [family['name']]
+        return families
 
     def create_config(self, name, copy_uuid=None, **kwargs):
         """Creates a new config or copies an existing config using the id of
@@ -214,6 +227,17 @@ class Client(object):
     def delete_config(self, uuid):
         """Delete a config with uuid."""
         return self._delete("config", uuid=uuid)
+        
+    def delete_nvt_from_config(self, config, nvt):
+        """Deletes an NVT from the given config"""
+        nvts = self.list_config_nvts(config)
+        if nvt in nvts:
+            families = self.map_nvts()
+            for f in self.list_config_families(config):
+                if nvt in families[f]:
+                    # we have the nvt and its family
+                    print(nvt)
+            
         
     def delete_config_by_name(self, config):
         """Delete a config using its name."""
@@ -433,7 +457,7 @@ class Client(object):
 
     def list_nvts(self):
         """List NVTs including details."""
-        request = etree.Element("get_nvts", details="1")
+        request = etree.Element("get_nvt", details="1")
         resp = self._send_request(request)
 
         response = Response(req=request, resp=resp, cb=None)
@@ -446,11 +470,29 @@ class Client(object):
         """Returns a single NVT using an @nvt_oid."""
         request = etree.Element("nvt", uuid=uuid)
 
+    def get_nvt_family(self, uuid):
+        """Return the id of the family that the NVT is a member of."""
+        map = self.map_nvts()
+        for family in map.keys():
+            if uuid in family.keys():
+                return family
+
     def list_nvt_families(self):
         """List NVT families."""
         request = etree.Element("get_nvt_families")
         response = self._command(request, cb=None)
         return response['families']['family']
+    
+    def map_nvts(self):
+        """Return a dictionary mapping NVT families to lists of the 
+        NVTs that they contain."""
+        families = {}
+        for nvt in self.list_nvts():
+            if nvt['family'] in families.keys():
+                families[nvt['family']] += [{'oid':nvt['@oid'], 'name':nvt['name']}]
+            else:
+                families[nvt['family']] = [{'oid':nvt['@oid'], 'name':nvt['name']}]
+        return families
     
     def _command(self, request, cb=None):
         """Send, build and validate response."""

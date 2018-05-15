@@ -63,6 +63,7 @@ functionality hasn't yet been implemented in pyvas.
 | get_configs     | list_configs, get_config, get_config_by_name | Get one or many configs |
 |                 | map_config_names | Create a dictionary of config names mapped to config ids |
 |                 | list_config_nvts | Lists all of the NVTs used by the given config |
+|                 | list_config_families | Lists all of the NVT families used by the given config |
 | get_aggregates  | | Get aggregates of various resources |
 | get_alerts      | | Get one or many alerts |
 | get_assets      | | Get one or many assets |
@@ -73,7 +74,9 @@ functionality hasn't yet been implemented in pyvas.
 | get_info        | | Get information for items of a given type |
 | get_notes       | | Get one or many notes |
 | get_nvts        |list_nvts, get_nvt | Get one or many NVTs |
+|      | map_nvts | Return a dictionary mapping NVT families to lists of the NVTs that they contain |
 | get_nvt_families | list_nvt_families, get_nvt_family | Get one or many NVT families |
+|      | get_nvt_family | Return the id of the family that the NVT is a member of |
 | get_overrides   | | Get one or many overrides |
 | get_permissions | | Get one or many permissions |
 | get_port_lists  | list_port_lists, get_port_list | Get one or many port lists |
