@@ -202,12 +202,15 @@ class Client(object):
         
     def list_config_families(self, uuid):
         """Returns a list of oids of nvt families called by the given config."""
-        config = self.get_config(uuid, families=True)
-        families = []
-        for family in config['families']['family']:
-            if family['name'] != '':
-                families += [family['name']]
-        return families
+        try:
+            config = self.get_config(uuid, families=True)
+            families = []
+            for family in config['families']['family']:
+                if family['name'] != '':
+                    families += [family['name']]
+            return families
+        except:
+            return []
 
     def create_config(self, name, copy_uuid=None, **kwargs):
         """Creates a new config or copies an existing config using the id of

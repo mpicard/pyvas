@@ -220,6 +220,15 @@ class TestConfigs(object):
         response = client.create_config(name=NAME, copy_uuid=config["@id"])
         assert response.ok
 
+    def test_copy_config_by_name(self, client, config):
+        response = client.copy_config_by_name(config["name"], "{} Test".format(config["name"]))
+        assert response.ok
+        
+    def test_delete_config_by_name(self, client, config):
+        empty = client.copy_config_by_name(config["name"], "{} Test".format(config["name"]))
+        response = client.delete_config_by_name("{} Test".format(config["name"]))
+        assert response["@status"] == "200"
+        
     def test_list_config(self, client):
         response = client.list_configs()
         assert response.ok
@@ -235,7 +244,19 @@ class TestConfigs(object):
         response = client.get_config(uuid=config["@id"])
         #assert response.ok
         assert response.get('@id') == config["@id"]
+        
+    def test_get_config_by_name(self,client,config):
+        response = client.get_config_by_name(config["name"])
+        assert response.get("name") == config["name"]
+    
+    def test_list_config_nvts(self, client, config):
+        response = client.list_config_nvts(config["@id"])
+        assert isinstance(response, list)
 
+    def test_list_config_families(self, client, config):
+        response = client.list_config_families(config["@id"])
+        assert isinstance(response, list)
+    
     def test_delete_config(self, client, config):
         empty = client.create_config(name="delete me",
                                      copy_uuid=config["@id"])
@@ -416,3 +437,20 @@ class TestSchedules(object):
     def test_delete_schedule(self, client, schedule):
         response = client.delete_schedule(uuid=schedule["@id"])
         assert response.ok
+
+class TestNVTs(object):
+    
+    def test_map_nvts(self, client):
+        response = client.map_nvts()
+        assert isinstance(response, dict)
+
+    def test_list_nvts(self, client):
+        response = client.list_nvts()
+        assert isinstance(response, list)
+
+#    def test_get_nvt(self, client, uuid):
+
+#    def test_list_nvt_families(self, client):
+
+
+

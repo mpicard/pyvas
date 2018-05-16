@@ -1,8 +1,8 @@
 # Mapping between OpenVAS OMP and pyvas commands
 
-Note that there are commands with missing equivalents in both directions. This
-can reflect that either the equivalent doesn't make sense, or that the
-functionality hasn't yet been implemented in pyvas.
+Note that there are commands with missing equivalents in both 
+directions. This can reflect that either the equivalent doesn't make 
+sense, or that the functionality hasn't yet been implemented in pyvas.
 
 | OpenVAS OMP 7.0 | pyvas            | Description |
 | ----------------|------------------|------------------------------------------- |
@@ -137,11 +137,14 @@ functionality hasn't yet been implemented in pyvas.
 | verify_report_format | | Verify a report format |
 | verify_scanner  | | Verify a scanner |
 
+## Further information
+
+* OpenVAS Project OMP Documentation - (http://docs.greenbone.net/API/OMP/omp-7.0.html)
+
 ## Authors
 
 * **Anna Langley** - *Initial work on this document* - [jal58](https://github.com/jal58)
 
 ## Acknowledgments
 
-* OpenVAS Project OMP Documentation - (http://docs.greenbone.net/API/OMP/omp-7.0.html)
-* Martin Picard - [mpicard](https://github.com/mpicard)
+* Martin Picard (original developer of pyvas) - (https://github.com/mpicard)
