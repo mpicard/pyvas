@@ -18,6 +18,7 @@ import os
 import socket
 import ssl
 import six
+import sys
 from lxml import etree
 
 from .response import Response
@@ -40,37 +41,6 @@ def print_xml(element):  # pragma: no cover noqa
 class Client(object):
     """OpenVAS OMP Client"""
 
-    type_to_id = {
-        'agent':'@id',
-        'config':'@id',
-        'aggregate':'aggregate',
-        'alert':'@id',
-        'asset':'@id',
-        'credential':'@id',
-        'feed':'feed',
-        'filter':'@id',
-        'group':'@id',
-        'info':'@id',
-        'note':'@id',
-        'nvt':'@oid',
-        'nvt_family':'@id',
-        'override':'@id',
-        'permission':'@id',
-        'port_list':'@id',
-        'preference':'@oid',
-        'report':'@id',
-        'report_format':'@id',
-        'result':'@id',
-        'role':'@id',
-        'scanner':'@id',
-        'schedule':'@id',
-        'setting':'@id',
-        'tag':'@id',
-        'target':'@id',
-        'task':'@id',
-        'user':'@id',
-        }
-
     def __init__(self, host, username=None, password=None, port=DEFAULT_PORT):
         """Initialize OMP client."""
         self.host = host
@@ -82,10 +52,14 @@ class Client(object):
 
     def open(self, username=None, password=None):
         """Open socket connection and authenticate client."""
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket = sock = ssl.wrap_socket(sock)
-        sock.connect((self.host, int(self.port)))
-        self.authenticate(username, password)
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket = sock = ssl.wrap_socket(sock)
+            sock.connect((self.host, int(self.port)))
+            self.authenticate(username, password)
+        except:
+            sys.stderr.write("Error: cannot connect to OpenVAS host\n")
+            raise AuthenticationError
 
     def close(self):
         """Close client's socket connection to server."""
@@ -489,19 +463,19 @@ class Client(object):
         """Delete a schedule."""
         return self._delete('schedule', uuid=uuid)
 
-    def list_nvts(self, **kwargs):
+    def list_nvts(self, details=False):
         """List NVTs including details."""
-        return self._list("nvt", **kwargs)
-        #request = etree.Element('get_nvts', details='1')
-        #resp = self._send_request(request)
-        #response = Response(req=request, resp=resp, cb=None)
-        ## validate response, raise exceptions, if any
-        #response.raise_for_status()
-        #return response
+        if details:
+            request = etree.Element('get_nvts', details='1')
+        else:
+            request = etree.Element('get_nvts')
+        response = self._command(request)
+        return response
+
 
     def get_nvt(self, uuid):
         """Returns a single NVT using an @nvt_oid."""
-        request = etree.Element("nvt", uuid=uuid)
+        return self._get('nvt', uuid=uuid)
 
     def get_nvt_family(self, uuid):
         """Return the id of the family that the NVT is a member of."""
@@ -520,7 +494,8 @@ class Client(object):
         """Return a dictionary mapping NVT families to lists of the 
         NVTs that they contain."""
         families = {}
-        for nvt in self.list_nvts():
+        nvts = self.list_nvts(details=True)
+        for nvt in nvts.data['nvt']:
             if nvt['family'] in families.keys():
                 families[nvt['family']] += [{'oid':nvt['@oid'], 'name':nvt['name']}]
             else:

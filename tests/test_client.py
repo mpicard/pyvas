@@ -456,18 +456,32 @@ class TestNVTs(object):
         assert len(response) > 0
         assert isinstance(response, list)
         
-    #def test_map_nvts(self, client):
-        #nvt_map = client.map_nvts()
-        #assert len(nvt_map) > 0
-        ## assert isinstance(nvt_map, dict)
+    def test_map_nvts(self, client):
+        response = client.map_nvts()
+        assert len(response) > 0
+        assert isinstance(response, dict)
 
     def test_list_nvts(self, client):
         response = client.list_nvts()
         assert response.ok
-        assert isinstance(response.data, list)
+        assert isinstance(response.data['nvt'], list)
+        assert isinstance(response.data['nvt'][0]["@oid"], str)
+        assert isinstance(response.data['nvt'][0]["name"], str)
+
+    def test_list_nvts_with_details(self, client):
+        response = client.list_nvts(details=True)
+        assert response.ok
+        assert isinstance(response.data['nvt'], list)
+        assert isinstance(response.data['nvt'][0]["@oid"], str)
+        assert isinstance(response.data['nvt'][0]["name"], str)
+        assert isinstance(response.data['nvt'][0]["family"], str)
 
 
-#    def test_get_nvt(self, client, uuid):
+    def test_get_nvt(self, client):
+        nvts = client.list_nvts()
+        response = client.get_nvt(nvts.data['nvt'][0]["@oid"])
+        assert response.ok
+        assert response.data["@oid"] == nvts.data['nvt'][0]["@oid"]
 
 
 
