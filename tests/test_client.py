@@ -133,16 +133,27 @@ def test_client_send_request(client):
 
 class TestClientGenericMethods(object):
 
-    def test_list(self, client):
-        response = client._list('target')
+    @pytest.mark.parametrize('data_type', ['config','port_list','nvt','nvt_family','task','user'])
+    def test_list(self, client, data_type):
+        response = client._list(data_type)
         assert response.ok
+
+    @pytest.mark.parametrize('data_type', ['config','port_list','nvt','nvt_family','task','user'])
+    def test_list_with_arguments(self, client, data_type):
+        response = client._list(data_type, details='1')
+        assert response.ok
+        assert isinstance(response.data, list)
 
     def test_get(self, client):
         with pytest.raises(exceptions.ElementNotFound):
             client._get('target',
                         uuid=six.text_type(uuid.uuid4()),
                         cb=lambda x: x)
-
+                        
+    @pytest.mark.parametrize('data_type', ['config','port_list','nvt','nvt_family','task','user'])
+    def test_map(self, client, data_type):
+        dictionary = client._map(data_type)
+        assert isinstance(dictionary, dict)
 
 class TestPortLists(object):
     def test_create_port_list(self, client):
@@ -440,17 +451,24 @@ class TestSchedules(object):
 
 class TestNVTs(object):
     
-    def test_map_nvts(self, client):
-        response = client.map_nvts()
-        assert isinstance(response, dict)
+    def test_list_nvt_families(self, client):
+        response = client.list_nvt_families()
+        assert len(response) > 0
+        assert isinstance(response, list)
+        
+    #def test_map_nvts(self, client):
+        #nvt_map = client.map_nvts()
+        #assert len(nvt_map) > 0
+        ## assert isinstance(nvt_map, dict)
 
     def test_list_nvts(self, client):
         response = client.list_nvts()
-        assert isinstance(response, list)
+        assert response.ok
+        assert isinstance(response.data, list)
+
 
 #    def test_get_nvt(self, client, uuid):
 
-#    def test_list_nvt_families(self, client):
 
 
 

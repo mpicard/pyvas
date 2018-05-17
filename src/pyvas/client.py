@@ -40,6 +40,37 @@ def print_xml(element):  # pragma: no cover noqa
 class Client(object):
     """OpenVAS OMP Client"""
 
+    type_to_id = {
+        'agent':'@id',
+        'config':'@id',
+        'aggregate':'aggregate',
+        'alert':'@id',
+        'asset':'@id',
+        'credential':'@id',
+        'feed':'feed',
+        'filter':'@id',
+        'group':'@id',
+        'info':'@id',
+        'note':'@id',
+        'nvt':'@oid',
+        'nvt_family':'@id',
+        'override':'@id',
+        'permission':'@id',
+        'port_list':'@id',
+        'preference':'@oid',
+        'report':'@id',
+        'report_format':'@id',
+        'result':'@id',
+        'role':'@id',
+        'scanner':'@id',
+        'schedule':'@id',
+        'setting':'@id',
+        'tag':'@id',
+        'target':'@id',
+        'task':'@id',
+        'user':'@id',
+        }
+
     def __init__(self, host, username=None, password=None, port=DEFAULT_PORT):
         """Initialize OMP client."""
         self.host = host
@@ -458,16 +489,15 @@ class Client(object):
         """Delete a schedule."""
         return self._delete('schedule', uuid=uuid)
 
-    def list_nvts(self):
+    def list_nvts(self, **kwargs):
         """List NVTs including details."""
-        request = etree.Element("get_nvt", details="1")
-        resp = self._send_request(request)
-
-        response = Response(req=request, resp=resp, cb=None)
-        # validate response, raise exceptions, if any
-        response.raise_for_status()
-
-        return response['nvt']
+        return self._list("nvt", **kwargs)
+        #request = etree.Element('get_nvts', details='1')
+        #resp = self._send_request(request)
+        #response = Response(req=request, resp=resp, cb=None)
+        ## validate response, raise exceptions, if any
+        #response.raise_for_status()
+        #return response
 
     def get_nvt(self, uuid):
         """Returns a single NVT using an @nvt_oid."""
@@ -509,6 +539,9 @@ class Client(object):
 
     def _get(self, data_type, uuid, cb=None):
         """Generic get function."""
+        # deal with the non-standard plural
+        if data_type == 'nvt_family':
+            data_type = 'nvt_familie' 
         request = etree.Element("get_{}s".format(data_type))
 
         request.set("{}_id".format(data_type), uuid)
@@ -523,14 +556,22 @@ class Client(object):
 
     def _map(self, data_type):
         """Generic function to map names to ids"""
+        if data_type == 'nvt_family':
+            data_type = 'nvt_familie' 
         List = self._list(data_type)
         Map = {}
-        for Item in List:
-            Map[Item["name"]] = Item["@id"]
+        if data_type in ['nvt', 'preference']:
+            for Item in List:
+                Map[Item["name"]] = Item["@oid"]
+        else:
+            for Item in List:
+                Map[Item["name"]] = Item["@id"]
         return Map
 
     def _list(self, data_type, cb=None, **kwargs):
         """Generic list function."""
+        if data_type == 'nvt_family':
+            data_type = 'nvt_familie' 
         request = etree.Element("get_{}s".format(data_type))
 
         if kwargs is not {}:
