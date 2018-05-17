@@ -277,6 +277,9 @@ class TestConfigs(object):
         response = client.delete_config(uuid=empty["@id"])
         assert response["@status"] == "200"
 
+    def test_map_config_names(self, client):
+        dictionary = client.map_config_names()
+        assert isinstance(dictionary, dict)
 
 class TestScanners(object):
 
