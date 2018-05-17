@@ -232,12 +232,15 @@ class TestConfigs(object):
         assert response.ok
 
     def test_copy_config_by_name(self, client, config):
-        response = client.copy_config_by_name(config["name"], "{} Test".format(config["name"]))
+        new_config = "{}-{}".format(config["name"],os.getpid())
+        response = client.copy_config_by_name(config["name"], new_config)
         assert response.ok
+        client.delete_config_by_name(new_config)
         
     def test_delete_config_by_name(self, client, config):
-        empty = client.copy_config_by_name(config["name"], "{} Test".format(config["name"]))
-        response = client.delete_config_by_name("{} Test".format(config["name"]))
+        new_config = "{}-{}".format(config["name"],os.getpid())
+        empty = client.copy_config_by_name(config["name"], new_config)
+        response = client.delete_config_by_name(new_config)
         assert response["@status"] == "200"
         
     def test_list_config(self, client):
