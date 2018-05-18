@@ -282,14 +282,14 @@ class TestConfigs(object):
         dictionary = client.map_config_names()
         assert isinstance(dictionary, dict)
         
-    def test_config_remove_nvt(self, client, config):
+    def test_config_remove_nvt(self, client):
         """
         Test removing a single nvt (@oid) from a config (@id). 
         """
         # Create a new test config
-        new_config_name = "{}-{}".format(config["name"],os.getpid())
-        response = client.copy_config_by_name(config["name"], new_config_name)
-        test_config = client.map_config_names[new_config_name]
+        new_config_name = "test_config_remove_nvt-{}".format(os.getpid())
+        response = client.copy_config_by_name("Full and fast", new_config_name)
+        test_config = client.map_config_names()[new_config_name]
         
         # Randomly select an nvt in the config, and attempt to remove it
         random.seed()
@@ -303,6 +303,9 @@ class TestConfigs(object):
         
         # Verify that all the other nvts have survived
         assert remaining_nvts.sort() is nvts.remove(nvt).sort()
+        
+        # Clean up
+        client.delete_config_by_name(new_config_name)
 
 class TestScanners(object):
 
@@ -487,7 +490,7 @@ class TestNVTs(object):
         
     def test_map_nvts(self, client):
         response = client.map_nvts()
-        assert len(response) > 0
+        assert len(response) > 1
         assert isinstance(response, dict)
 
     def test_list_nvts(self, client):

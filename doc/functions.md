@@ -64,6 +64,7 @@ sense, or that the functionality hasn't yet been implemented in pyvas.
 |                 | map_config_names | Create a dictionary of config names mapped to config ids |
 |                 | list_config_nvts | Lists all of the NVTs used by the given config |
 |                 | list_config_families | Lists all of the NVT families used by the given config |
+|                 | config_remove_nvt | Modifies a config by removing one nvt that it uses |
 | get_aggregates  | | Get aggregates of various resources |
 | get_alerts      | | Get one or many alerts |
 | get_assets      | | Get one or many assets |

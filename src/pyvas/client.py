@@ -199,11 +199,11 @@ class Client(object):
     def list_config_nvts(self, uuid):
         """Returns a list of oids of nvts called by the given config."""
         config = self.get_config(uuid, preferences=True)
-        nvts = []
+        nvts = set({})
         for nvt in config['preferences']['preference']:
             if nvt['nvt']['@oid'] != '':
-                nvts += [nvt['nvt']['@oid']]
-        return nvts
+                nvts.add(nvt['nvt']['@oid'])
+        return list(nvts)
         
     def list_config_families(self, uuid):
         """Returns a list of oids of nvt families called by the given config."""
@@ -236,16 +236,44 @@ class Client(object):
         """Delete a config with uuid."""
         return self._delete("config", uuid=uuid)
         
-    def delete_nvt_from_config(self, config, nvt):
-        """Deletes an NVT from the given config"""
-        nvts = self.list_config_nvts(config)
-        if nvt in nvts:
-            families = self.map_nvts()
-            for f in self.list_config_families(config):
+    def config_remove_nvt(self, config, nvt):
+        """Removes an NVT from the given config"""
+        # find the family of the NVT
+        families = self.map_nvts()
+        if len(families) is not 0:
+            family = ''
+            for f in families.keys():
                 if nvt in families[f]:
-                    # we have the nvt and its family
-                    print(nvt)
+                    family = f
+            if family is '':
+                ## nvt not found
+                return False
             
+            # make a list of the config's NVTs that belong to that family
+            my_nvts = {}
+            for n in self.list_config_nvts(config):
+                    for f in families.keys():
+                        if n in families[f]:
+                            if f in my_nvts.keys():
+                                my_nvts[f] += [n]
+                            else:
+                                my_nvts[f] = [n]
+            
+            # remove the unwanted NVT from the list
+            remaining_nvts = my_nvts[family].remove(nvt)
+            
+            # craft an XML query to set the config's NVTs for that family
+            cmd = etree.Element("modify_config", config_id=config)
+            sel = etree.Element("nvt_selection")
+            fam = etree.Element("family")
+            fam.text = family
+            sel.append(fam)
+            for n in remaining_nvts:
+                etree.SubElement(sel, "nvt", oid=n)
+            cmd.append(sel)
+                        
+            # Run this XML
+            return self._command(cmd)
         
     def delete_config_by_name(self, config):
         """Delete a config using its name."""
