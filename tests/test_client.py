@@ -10,6 +10,7 @@ import uuid
 import time
 import six
 import pytest
+import random
 from lxml import etree
 try:  # pragma: no cover
     from HTMLParser import HTMLParser
@@ -280,6 +281,28 @@ class TestConfigs(object):
     def test_map_config_names(self, client):
         dictionary = client.map_config_names()
         assert isinstance(dictionary, dict)
+        
+    def test_config_remove_nvt(self, client, config):
+        """
+        Test removing a single nvt (@oid) from a config (@id). 
+        """
+        # Create a new test config
+        new_config_name = "{}-{}".format(config["name"],os.getpid())
+        response = client.copy_config_by_name(config["name"], new_config_name)
+        test_config = client.map_config_names[new_config_name]
+        
+        # Randomly select an nvt in the config, and attempt to remove it
+        random.seed()
+        nvts = client.list_config_nvts(test_config)
+        nvt = random.choice(nvts)
+        response = client.config_remove_nvt(test_config, nvt)
+        remaining_nvts = client.list_config_nvts(test_config)
+        
+        # That nvt should no longer be in the config
+        assert nvt not in remaining_nvts
+        
+        # Verify that all the other nvts have survived
+        assert remaining_nvts.sort() is nvts.remove(nvt).sort()
 
 class TestScanners(object):
 
