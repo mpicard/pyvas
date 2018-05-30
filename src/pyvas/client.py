@@ -15,6 +15,7 @@ usage:
 from __future__ import unicode_literals, print_function
 
 import os
+import pprint
 import socket
 import ssl
 import six
@@ -198,12 +199,15 @@ class Client(object):
 
     def list_config_nvts(self, uuid):
         """Returns a list of oids of nvts called by the given config."""
-        config = self.get_config(uuid, preferences=True)
-        nvts = set({})
-        for nvt in config['preferences']['preference']:
-            if nvt['nvt']['@oid'] != '':
-                nvts.add(nvt['nvt']['@oid'])
-        return list(nvts)
+        try:
+            config = self.get_config(uuid, details=True)
+            nvts = []
+            for n in config['nvt_selectors']['nvt_selector']:
+                if n['type'] is '2':
+                    nvts += [n['family_or_nvt']]
+            return nvts
+        except:
+            return []
         
     def list_config_families(self, uuid):
         """Returns a list of oids of nvt families called by the given config."""
@@ -232,48 +236,136 @@ class Client(object):
         referred to by name"""
         return self.create_config(copy, copy_uuid=self.map_config_names()[original])
 
+    def copy_config_with_blacklist_by_name(self, original, copy, blacklist):
+        """
+        Copies a config by name, but without the NVTs specified in the 
+        blacklist argument.
+        """
+        original_id = self.map_config_names()[original]
+        
+        # Query the original config for its preferences and nvts
+        response = self.get_config_by_name(original, preferences=True)
+        preferences = response["preferences"]["preference"]
+        
+        original_families = self.list_config_families(original_id)
+        original_nvts     = self.list_config_nvts(original_id)
+        nvts = list(set(original_nvts) - set(blacklist))
+        assert len(nvts) <= len(original_nvts)
+        nvt_to_fam =  self.map_nvts_to_families()
+
+        # Construct model of the new config's NVTs
+        families={}
+        for nvt in nvts:
+            if nvt not in blacklist:
+                family = nvt_to_fam[nvt]
+                if family in families.keys():
+                    families[family] += [nvt]
+                else:
+                    families[family] = [nvt]
+        
+        # Create the new empty config
+        response = self.copy_config_by_name("empty", copy)
+        copy_id = self.map_config_names()[copy]
+        
+        # Add the NVTs and preferences to the new config
+        for family in families.keys():
+            # Add the NVTs
+            cmd = etree.Element("modify_config", config_id=copy_id)
+            sel = etree.Element("nvt_selection")
+            fam = etree.Element("family")
+            fam.text = family
+            sel.append(fam)
+            for n in families[family]:
+                if n not in blacklist:
+                    etree.SubElement(sel, "nvt", oid=n)
+            cmd.append(sel)
+            #print(etree.tostring(cmd, pretty_print=True))
+            self._command(cmd)
+            
+        #for nvt in preferences:
+            #if nvt['nvt']['@oid'] not in blacklist \
+                #and nvt['nvt']['@oid'] != '' \
+                #and nvt['value']:
+                ## Add the preferences
+                #cmd = etree.Element("modify_config", config_id=copy_id)
+                #pref = etree.Element('preference')
+                #etree.SubElement(pref, 'nvt', oid=nvt['nvt']['@oid'])
+                #etree.SubElement(pref, 'name').text = nvt['name']
+                ##etree.SubElement(pref, 'name').text = ''
+                #etree.SubElement(pref, 'value').text = nvt['value']
+                #cmd.append(pref)
+                ##print(etree.tostring(cmd))
+                #try:
+                    #self._command(etree.tostring(cmd))
+                #except:
+                    #print(etree.tostring(cmd))
+                    #print(nvt['name'])
+        return copy_id
+                
+
+
     def delete_config(self, uuid):
         """Delete a config with uuid."""
         return self._delete("config", uuid=uuid)
+        
         
     def config_remove_nvt(self, config, nvt):
         """Removes an NVT from the given config"""
         # find the family of the NVT
         families = self.map_nvts()
-        if len(families) is not 0:
-            family = ''
-            for f in families.keys():
-                if nvt in families[f]:
+        
+        # reverse the mapping and limit it to the NVTs in this config
+        all_my_nvts = self.list_config_nvts(config)
+        oid_to_fam = {}
+        family = ''
+        for f in families.keys():
+            for n in families[f]:
+                if n["oid"] is nvt:
+                    # pick up which family our unwanted NVT belongs to
                     family = f
-            if family is '':
-                ## nvt not found
-                return False
+                    print("family is: {}".format(family))
+                if n["oid"] in all_my_nvts:
+                    oid_to_fam[n["oid"]] = f
+        family = oid_to_fam[nvt]
+        assert family is not '', \
+            "couldn't determine the family of NVT {}".format(nvt)
             
-            # make a list of the config's NVTs that belong to that family
-            my_nvts = {}
-            for n in self.list_config_nvts(config):
-                    for f in families.keys():
-                        if n in families[f]:
-                            if f in my_nvts.keys():
-                                my_nvts[f] += [n]
-                            else:
-                                my_nvts[f] = [n]
-            
-            # remove the unwanted NVT from the list
-            remaining_nvts = my_nvts[family].remove(nvt)
-            
-            # craft an XML query to set the config's NVTs for that family
-            cmd = etree.Element("modify_config", config_id=config)
-            sel = etree.Element("nvt_selection")
-            fam = etree.Element("family")
-            fam.text = family
-            sel.append(fam)
-            for n in remaining_nvts:
+        # make a list of the remaining NVTs in the unwanted NVT's family
+        nvts_to_keep = []
+        for n in oid_to_fam.keys():
+            if oid_to_fam[n] is family and n is not nvt:
+                nvts_to_keep += [n]
+
+        # craft an XML query to nullify the NVT family in the config
+        cmd = etree.Element("modify_config", config_id=config)
+        sel = etree.Element("family_selection")
+        grw = etree.Element("growing")
+        grw.text = "1"
+        fam = etree.Element("family")
+        etree.SubElement(fam, "name").text = family
+        etree.SubElement(fam, "all").text = "0"
+        etree.SubElement(fam, "growing").text = "0"
+        sel.append(grw)
+        sel.append(fam)
+        cmd.append(sel)
+        print(etree.tostring(cmd, pretty_print=True))
+        self._command(cmd)
+    
+
+        # craft an XML query to set the config's NVTs for that family
+        cmd = etree.Element("modify_config", config_id=config)
+        sel = etree.Element("nvt_selection")
+        fam = etree.Element("family")
+        fam.text = family
+        sel.append(fam)
+        for n in nvts_to_keep:
+            if n != nvt:
                 etree.SubElement(sel, "nvt", oid=n)
-            cmd.append(sel)
-                        
-            # Run this XML
-            return self._command(cmd)
+        cmd.append(sel)
+        print(etree.tostring(cmd, pretty_print=True))
+                            
+        # Run this XML
+        return self._command(cmd)
         
     def delete_config_by_name(self, config):
         """Delete a config using its name."""
@@ -529,6 +621,18 @@ class Client(object):
             else:
                 families[nvt['family']] = [{'oid':nvt['@oid'], 'name':nvt['name']}]
         return families
+    
+    def map_nvts_to_families(self):
+        """Return a dictionary mapping NVTs to the families they belong to"""
+        # find the family of the NVT
+        families = self.map_nvts()
+        
+        # reverse the mapping 
+        oid_to_fam = {}
+        for f in families.keys():
+            for n in families[f]:
+                oid_to_fam[n["oid"]] = f
+        return oid_to_fam
     
     def _command(self, request, cb=None):
         """Send, build and validate response."""

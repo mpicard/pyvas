@@ -19,7 +19,9 @@ sense, or that the functionality hasn't yet been implemented in pyvas.
 | create_agent    | | Create an agent |
 | create_alert    | | Create an alert |
 | create_asset    | | Create an asset |
-| create_config   | create_config | Create a config |
+| create_config   | create_config | Copy a config |
+|                 | copy_config_with_blacklist_by_name | Copies a config leaving out unwanted NVTs | 
+|                 | copy_config_by_name | Copies a config by name |
 | create_credential create_credential | Create a credential |
 | create_filter   | | Create a filter |
 | create_group    | | Create a group |
