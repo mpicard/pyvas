@@ -264,10 +264,22 @@ class TestConfigs(object):
         response = client.get_config_by_name(config["name"])
         assert response.get("name") == config["name"]
     
-    def test_list_config_nvts(self, client, config):
-        response = client.list_config_nvts(config["@id"])
-        assert isinstance(response, list)
-
+    #def test_list_config_nvts(self, client, config):
+        #response = client.list_config_nvts(config["@id"])
+        #assert isinstance(response, list)
+        
+    @pytest.mark.parametrize('conf', ['empty', 'Full and fast', 'Full and very deep'])
+    def test_list_config_nvts(self, client, conf):
+        uuid = client.map_config_names()[conf]
+        without_families = client.list_config_nvts(uuid)
+        with_families = client.list_config_nvts(uuid, families=True)
+        if conf == "empty":
+            assert len(without_families) == 0
+            assert len(with_families) == 0
+        else:
+            assert len(with_families) > 0
+            assert len(with_families) >= len(without_families)
+            
     def test_list_config_families(self, client, config):
         response = client.list_config_families(config["@id"])
         assert isinstance(response, list)
@@ -282,32 +294,32 @@ class TestConfigs(object):
         dictionary = client.map_config_names()
         assert isinstance(dictionary, dict)
         
-    #def test_config_remove_nvt(self, client):
-        #"""
-        #Test removing a single nvt (@oid) from a config (@id). 
-        #"""
-        ## Create a new test config
-        #new_config_name = "test_config_remove_nvt-{}".format(os.getpid())
-        #response = client.copy_config_by_name("Full and fast", new_config_name)
-        #test_config = client.map_config_names()[new_config_name]
+    def test_config_remove_nvt(self, client):
+        """
+        Test removing a single nvt (@oid) from a config (@id). 
+        """
+        # Create a new test config
+        new_config_name = "test_config_remove_nvt-{}".format(os.getpid())
+        response = client.copy_config_by_name("Full and fast", new_config_name)
+        test_config = client.map_config_names()[new_config_name]
         
-        ## Randomly select an nvt in the config, and attempt to remove it
-        #random.seed()
-        #nvts = client.list_config_nvts(test_config)
-        #nvt = random.choice(nvts)
-        #response = client.config_remove_nvt(test_config, nvt)
-        #remaining_nvts = client.list_config_nvts(test_config)
+        # Randomly select an nvt in the config, and attempt to remove it
+        random.seed()
+        nvts = client.list_config_nvts(test_config)
+        nvt = random.choice(nvts)
+        response = client.config_remove_nvt(test_config, nvt)
+        remaining_nvts = client.list_config_nvts(test_config)
         
-        ## That nvt should no longer be in the config
-        #assert nvt not in remaining_nvts, \
-            #"failed to remove NVT: {} from the config".format(nvt)
+        # That nvt should no longer be in the config
+        assert nvt not in remaining_nvts, \
+            "failed to remove NVT: {} from the config".format(nvt)
         
-        ## Verify that all the other nvts have survived
-        #assert remaining_nvts.sort() is nvts.remove(nvt).sort(), \
-            #"nvt has been removed but the list of remaining nvts has changed"
+        # Verify that all the other nvts have survived
+        assert remaining_nvts.sort() is nvts.remove(nvt).sort(), \
+            "nvt has been removed but the list of remaining nvts has changed"
         
-        ## Clean up
-        #client.delete_config_by_name(new_config_name)
+        # Clean up
+        client.delete_config_by_name(new_config_name)
 
 class TestScanners(object):
 

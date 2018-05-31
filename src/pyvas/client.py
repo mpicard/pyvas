@@ -197,7 +197,7 @@ class Client(object):
         """Get config using name."""
         return self.get_config(self.map_config_names()[config], **kwargs)
 
-    def list_config_nvts(self, uuid):
+    def list_config_nvts(self, uuid, families=False):
         """Returns a list of oids of nvts called by the given config."""
         try:
             config = self.get_config(uuid, details=True)
@@ -205,10 +205,15 @@ class Client(object):
             for n in config['nvt_selectors']['nvt_selector']:
                 if n['type'] is '2':
                     nvts += [n['family_or_nvt']]
+            if families == True:
+                nvt_map = self.map_nvts()
+                for fam in self.list_config_families(uuid):
+                    for n in nvt_map[fam]:
+                        nvts += [n['oid']]
             return nvts
         except:
             return []
-        
+        nvt
     def list_config_families(self, uuid):
         """Returns a list of oids of nvt families called by the given config."""
         try:
