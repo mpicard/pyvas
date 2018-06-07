@@ -21,9 +21,9 @@ it belongs to, in order to construct the list.
 
 ## Implications for disabling an NVT from a config
 
-Therefore, to disable a single NVT where a whole family is selected, it
-is necessary to disable that entire family, and then add the list of NVTs
-which belong to that family which are still required.
+To disable a single NVT where a whole family is selected, it
+is necessary to disable that entire family, and then add the list of 
+NVTs which belong to that family which are still required.
 
 ## Further information
 
@@ -31,7 +31,7 @@ which belong to that family which are still required.
 
 ## Authors
 
-* **Anna Langley** - *Initial work on this document* - [jal58](https://github.com/jal58)
+* **Anna Langley** - *Initial work on this document* - (https://github.com/jal58)
 
 ## Acknowledgments
 

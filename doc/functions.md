@@ -86,7 +86,7 @@ sense, or that the functionality hasn't yet been implemented in pyvas.
 | get_preferences | | Get one or many preferences |
 | get_reports     | list_report, get_report, download_report | Get one or many reports |
 | get_report_formats | list_report_formats, get_report_format | Get one or many report formats |
-| get_results     | | Get one or many results |
+| get_results     | list_results, get_result | Get one or many results |
 | get_roles       | | Get one or many roles |
 | get_scanners    | list_scanners, get_scanner | Get one or many scanners |
 | get_schedules   | list_schedules, get_schedule | Get one or many schedules |
@@ -146,7 +146,7 @@ sense, or that the functionality hasn't yet been implemented in pyvas.
 
 ## Authors
 
-* **Anna Langley** - *Initial work on this document* - [jal58](https://github.com/jal58)
+* **Anna Langley** - *Initial work on this document* - (https://github.com/jal58)
 
 ## Acknowledgments
 

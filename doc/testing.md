@@ -107,7 +107,7 @@ python -m pytest -v
 
 ## Authors
 
-* **Anna Langley** - *Initial work on this document* - [jal58](https://github.com/jal58)
+* **Anna Langley** - *Initial work on this document* - (https://github.com/jal58)
 
 ## Acknowledgments
 

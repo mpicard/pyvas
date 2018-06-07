@@ -248,17 +248,27 @@ class Client(object):
         """
         original_id = self.map_config_names()[original]
         
-        # Query the original config for its preferences and nvts
+        # Query the original config for its NVT preferences
         response = self.get_config_by_name(original, preferences=True)
         preferences = response["preferences"]["preference"]
         
+        # Get lists of families, and other NVTs from the original
+        # config.
         original_families = self.list_config_families(original_id)
-        original_nvts     = self.list_config_nvts(original_id)
+        original_nvts     = self.list_config_nvts(original_id, families=True)
+        
+        # Make a list of NVTs from the original minus those on 
+        # the blacklist
         nvts = list(set(original_nvts) - set(blacklist))
-        assert len(nvts) <= len(original_nvts)
+        if len(blacklist) > 0:
+            assert len(nvts) < len(original_nvts)
+            
+        # get a mapping of NVTs to their families
         nvt_to_fam =  self.map_nvts_to_families()
 
         # Construct model of the new config's NVTs
+        # Keys: family names
+        # Values: lists of remaining NVTs
         families={}
         for nvt in nvts:
             if nvt not in blacklist:
@@ -284,7 +294,8 @@ class Client(object):
                 if n not in blacklist:
                     etree.SubElement(sel, "nvt", oid=n)
             cmd.append(sel)
-            #print(etree.tostring(cmd, pretty_print=True))
+            print(etree.tostring(cmd, pretty_print=True))
+            print()
             self._command(cmd)
             
         #for nvt in preferences:
@@ -481,6 +492,14 @@ class Client(object):
     def delete_task(self, uuid):
         """Delete a task."""
         return self._delete("task", uuid=uuid)
+
+    def list_results(self, **kwargs):
+        """List task results."""
+        return self._list("report", **kwargs)
+
+    def get_result(self, uuid, **kwargs):
+        """Get scan result by uuid."""
+        return self._get('result', uuid=uuid)
 
     def list_reports(self, **kwargs):
         """List task reports."""

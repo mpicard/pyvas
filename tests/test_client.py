@@ -85,6 +85,12 @@ def report(request, client):
     report = client.list_reports(task=NAME, owner=USERNAME).data[0]
     return report
 
+@pytest.fixture(scope="function")
+def result(request, client):
+    result = client.list_results(task=NAME, owner=USERNAME).data[0]
+    return result
+
+
 
 @pytest.fixture(scope="function")
 def schedule(request, client):
@@ -174,12 +180,14 @@ class TestPortLists(object):
         assert response.ok
         assert isinstance(response.data, list)
 
+    @slow
     def test_get_port_list(self, client, port_list):
         response = client.get_port_list(uuid=port_list["@id"])
         assert response.ok
         assert port_list["name"] == response["name"]
         assert port_list["@id"] == response["@id"]
 
+    @slow
     def test_delete_port_list(self, client, port_list):
         response = client.delete_port_list(uuid=port_list["@id"])
         assert response.ok
@@ -264,62 +272,66 @@ class TestConfigs(object):
         response = client.get_config_by_name(config["name"])
         assert response.get("name") == config["name"]
     
-    #def test_list_config_nvts(self, client, config):
-        #response = client.list_config_nvts(config["@id"])
-        #assert isinstance(response, list)
-        
-    @pytest.mark.parametrize('conf', ['empty', 'Full and fast', 'Full and very deep'])
-    def test_list_config_nvts(self, client, conf):
-        uuid = client.map_config_names()[conf]
-        without_families = client.list_config_nvts(uuid)
-        with_families = client.list_config_nvts(uuid, families=True)
-        if conf == "empty":
-            assert len(without_families) == 0
-            assert len(with_families) == 0
-        else:
-            assert len(with_families) > 0
-            assert len(with_families) >= len(without_families)
-            
+    @slow        
     def test_list_config_families(self, client, config):
         response = client.list_config_families(config["@id"])
         assert isinstance(response, list)
     
+    @slow
     def test_delete_config(self, client, config):
         empty = client.create_config(name="delete me",
                                      copy_uuid=config["@id"])
         response = client.delete_config(uuid=empty["@id"])
         assert response["@status"] == "200"
 
+    @slow
     def test_map_config_names(self, client):
         dictionary = client.map_config_names()
         assert isinstance(dictionary, dict)
         
-    def test_config_remove_nvt(self, client):
+    @pytest.mark.parametrize('original', ['Full and fast'])    
+    @slow
+    def test_copy_config_with_blacklist_by_name(self, client, original):
         """
-        Test removing a single nvt (@oid) from a config (@id). 
+        Test removing a random group of NVTs from a config
         """
-        # Create a new test config
-        new_config_name = "test_config_remove_nvt-{}".format(os.getpid())
-        response = client.copy_config_by_name("Full and fast", new_config_name)
-        test_config = client.map_config_names()[new_config_name]
-        
-        # Randomly select an nvt in the config, and attempt to remove it
+        orig = client.map_config_names()[original]
+        # Set up the test
         random.seed()
-        nvts = client.list_config_nvts(test_config)
-        nvt = random.choice(nvts)
-        response = client.config_remove_nvt(test_config, nvt)
-        remaining_nvts = client.list_config_nvts(test_config)
+        orig_nvts = client.list_config_nvts(orig, families=True)
+        assert len(orig_nvts) > 0, "Zero length NVT list in source config"
+        blacklist = random.sample(orig_nvts,\
+            random.randint(1,int(len(orig_nvts)/100)))
+        test_config_name = "test_config_remove_nvt-{}".format(os.getpid())
+        response = client.copy_config_with_blacklist_by_name(original,\
+            test_config_name, blacklist)
+        test_config = client.map_config_names()[test_config_name]
+        remaining_nvts = client.list_config_nvts(test_config, families=True)
+        client.delete_config(test_config)
         
-        # That nvt should no longer be in the config
-        assert nvt not in remaining_nvts, \
-            "failed to remove NVT: {} from the config".format(nvt)
-        
-        # Verify that all the other nvts have survived
-        assert remaining_nvts.sort() is nvts.remove(nvt).sort(), \
-            "nvt has been removed but the list of remaining nvts has changed"
-        
-        # Clean up
-        client.delete_config_by_name(new_config_name)
+        # Evaluate the results
+        bl = set(blacklist)
+        o  = set(orig_nvts)
+        r  = set(remaining_nvts)
+        assert len(r & bl) == 0, "Some blacklisted NVTs have survived"
+        assert len(o - bl) == len(r), "The remaining NVTs don't match the original minus the blacklist"
+
+    
+    @pytest.mark.parametrize('conf', ['Full and fast', 'empty'])
+    @slow
+    def test_list_config_nvts(self, client, conf):
+        uuid = client.map_config_names()[conf]
+        without_families = client.list_config_nvts(uuid)
+        with_families = client.list_config_nvts(uuid, families=True)
+        if conf == "empty":
+            assert len(without_families) == 0, "empty config has non-empty list of independent NVTs"
+            assert len(with_families) == 0, "empty config has non-empty list of families"
+        else:
+            assert len(with_families) > 0, \
+                "{} config shows zero NVTs".format(conf)
+            assert len(with_families) >= len(without_families), \
+                "{} config shows more NVTs without families than with".format(conf)
+
 
 class TestScanners(object):
 
@@ -463,6 +475,20 @@ class TestReports(object):
         parser.feed(response)
         parser.close()
         assert parser
+        
+class TestResults(object):
+
+    @slow
+    def test_list_results(self, client):
+        response = client.list_results(task=NAME, owner=USERNAME)
+        assert response.ok
+        assert isinstance(response.data, list)
+
+    @slow
+    def test_get_result(self, client, result):
+        response = client.get_report(uuid=result["@id"])
+        assert response.ok and response.status_code == 200
+
 
 
 class TestSchedules(object):
