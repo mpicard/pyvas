@@ -289,7 +289,7 @@ class TestConfigs(object):
         dictionary = client.map_config_names()
         assert isinstance(dictionary, dict)
         
-    @pytest.mark.parametrize('original', ['Full and fast'])    
+    @pytest.mark.parametrize('original', ['test1'])    
     @slow
     def test_copy_config_with_blacklist_by_name(self, client, original):
         """
@@ -300,14 +300,15 @@ class TestConfigs(object):
         random.seed()
         orig_nvts = client.list_config_nvts(orig, families=True)
         assert len(orig_nvts) > 0, "Zero length NVT list in source config"
-        blacklist = random.sample(orig_nvts,\
-            random.randint(1,int(len(orig_nvts)/100)))
+        #blacklist = random.sample(orig_nvts,\
+            #random.randint(1,int(len(orig_nvts)/100)))
+        blacklist = random.sample(orig_nvts, 1)
         test_config_name = "test_config_remove_nvt-{}".format(os.getpid())
         response = client.copy_config_with_blacklist_by_name(original,\
             test_config_name, blacklist)
         test_config = client.map_config_names()[test_config_name]
         remaining_nvts = client.list_config_nvts(test_config, families=True)
-        client.delete_config(test_config)
+        #client.delete_config(test_config)
         
         # Evaluate the results
         bl = set(blacklist)

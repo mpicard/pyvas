@@ -279,7 +279,8 @@ class Client(object):
                     families[family] = [nvt]
         
         # Create the new empty config
-        response = self.copy_config_by_name("empty", copy)
+        # response = self.copy_config_by_name("empty", copy)
+        response = self.copy_config_by_name(original, copy)
         copy_id = self.map_config_names()[copy]
         
         # Add the NVTs and preferences to the new config
@@ -294,28 +295,10 @@ class Client(object):
                 if n not in blacklist:
                     etree.SubElement(sel, "nvt", oid=n)
             cmd.append(sel)
-            print(etree.tostring(cmd, pretty_print=True))
-            print()
+            #print(etree.tostring(cmd, pretty_print=True))
+            #print()
             self._command(cmd)
             
-        #for nvt in preferences:
-            #if nvt['nvt']['@oid'] not in blacklist \
-                #and nvt['nvt']['@oid'] != '' \
-                #and nvt['value']:
-                ## Add the preferences
-                #cmd = etree.Element("modify_config", config_id=copy_id)
-                #pref = etree.Element('preference')
-                #etree.SubElement(pref, 'nvt', oid=nvt['nvt']['@oid'])
-                #etree.SubElement(pref, 'name').text = nvt['name']
-                ##etree.SubElement(pref, 'name').text = ''
-                #etree.SubElement(pref, 'value').text = nvt['value']
-                #cmd.append(pref)
-                ##print(etree.tostring(cmd))
-                #try:
-                    #self._command(etree.tostring(cmd))
-                #except:
-                    #print(etree.tostring(cmd))
-                    #print(nvt['name'])
         return copy_id
                 
 
@@ -504,10 +487,25 @@ class Client(object):
     def list_reports(self, **kwargs):
         """List task reports."""
         return self._list("report", **kwargs)
+        
+    def list_report_names(self):
+        """List reports by name"""
+        names = []
+        reports = self.list_reports(details="1")
+        for report in reports:
+            names += report['task']['name']
+        return names
 
     def get_report(self, uuid, **kwargs):
         """Get task report by uuid."""
         return self._get('report', uuid=uuid)
+        
+    def get_report_by_name(self, name, **kwargs):
+        """Get report by name"""
+        reports = self.list_reports(details="1")
+        for report in reports:
+            if name==report['task']['name']:
+                return report
 
     def delete_report(self, uuid):
         """Delete a report."""
