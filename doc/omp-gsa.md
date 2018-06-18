@@ -73,7 +73,7 @@ guidance, into what has gone wrong.
 
 ## Further information
 
-* OpenVAS Project OMP Documentation - (http://docs.greenbone.net/API/OMP/omp-7.0.html)
+* OpenVAS Documentation - (http://docs.greenbone.net)
 
 ## Authors
 

@@ -86,7 +86,9 @@ sense, or that the functionality hasn't yet been implemented in pyvas.
 | get_preferences | | Get one or many preferences |
 | get_reports     | list_report, get_report, download_report | Get one or many reports |
 | get_report_formats | list_report_formats, get_report_format | Get one or many report formats |
+|       | map_tasks_to_reports | Return a dictionary mapping tasks to lists of reports |
 | get_results     | list_results, get_result | Get one or many results |
+|       | map_tasks_to_results | Return a dictionary mapping tasks to lists of results |
 | get_roles       | | Get one or many roles |
 | get_scanners    | list_scanners, get_scanner | Get one or many scanners |
 | get_schedules   | list_schedules, get_schedule | Get one or many schedules |

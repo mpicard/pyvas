@@ -381,6 +381,20 @@ class Client(object):
     def list_report_formats(self, **kwargs):
         """List report formats with kwargs filters."""
         return self._list("report_format", **kwargs)
+        
+    def map_tasks_to_reports(self):
+        """Return a dict mapping task names to reports, so that
+        they can easily be accessed by name"""
+        reports = self.list_reports(details="1")
+        dictionary = {}
+        for r in reports:
+            report_id = r['@id']
+            task = r['task']['name']
+            if task in dictionary.keys():
+                dictionary[task] += [report_id]
+            else:
+                dictionary[task] = [report_id]
+        return dictionary
 
     def get_report_format(self, uuid):
         """Get report format with uuid."""
@@ -406,9 +420,13 @@ class Client(object):
         """Return a dictionary of task names mapped to ids."""
         return self._map("task")
     
-    def get_task(self, uuid):
+    def get_task(self, uuid, **kwargs):
         """Get task with uuid."""
-        return self._get("task", uuid=uuid)
+        return self._get("task", uuid=uuid, **kwargs)
+        
+    def get_task_by_name(self, task_name, **kwargs):
+        """Get task by name."""
+        return self._get("task", self.map_task_names()[task_name], **kwargs)
 
     def create_task(self, name, config_uuid, target_uuid,
                     scanner_uuid=None, comment=None, schedule_uuid=None):
@@ -470,19 +488,53 @@ class Client(object):
         
     def resume_task_by_name(self, task_name):
         """Resume a task by name."""
-        self.resume_task(self.map_task_names()[task_name])
+        return self.resume_task(self.map_task_names()[task_name])
 
     def delete_task(self, uuid):
         """Delete a task."""
         return self._delete("task", uuid=uuid)
+        
+    def delete_task_by_name(self, task_name):
+        """Delete a task by name."""
+        return self._delete("task", uuid=self.map_task_names()[task_name])
 
     def list_results(self, **kwargs):
         """List task results."""
-        return self._list("report", **kwargs)
+        return self._list("result", **kwargs)
 
-    def get_result(self, uuid, **kwargs):
+    #def get_result(self, uuid, **kwargs):
+        #"""Get scan result by uuid."""
+        #return self._get('result', uuid=uuid)
+
+    def get_result(self, uuid, details=False):
         """Get scan result by uuid."""
-        return self._get('result', uuid=uuid)
+        d = '0'
+        if details:
+            d = '1'
+        request = etree.Element("get_results", 
+            result_id=uuid, 
+            details=d)
+        resp = self._send_request(request)
+        response = Response(req=request, resp=resp, cb=None)
+        # validate response, raise exceptions, if any
+        response.raise_for_status()
+        
+        return response['result']       
+        
+        
+    def map_tasks_to_results(self):
+        """Return a dict mapping task names to results, so that
+        they can easily be accessed by name"""
+        results = self.list_results(details="1")
+        dictionary = {}
+        for result in results:
+            r = self.get_result(result['@id'], details=True)
+            task = r['task']['name']
+            if task in dictionary.keys():
+                dictionary[task] += [result['@id']]
+            else:
+                dictionary[task] = [result['@id']]
+        return dictionary
 
     def list_reports(self, **kwargs):
         """List task reports."""

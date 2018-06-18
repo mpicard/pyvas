@@ -170,7 +170,7 @@ class TestPortLists(object):
 
         assert response.ok and response.status_code == 201
 
-    def test_list_port_list(self, client):
+    def test_list_port_lists(self, client):
         response = client.list_port_lists()
         assert response.ok
         assert isinstance(response.data, list)
@@ -201,12 +201,12 @@ class TestTargets(object):
                                         comment="test")
         assert response.ok and response.status_code == 201
 
-    def test_list_target(self, client):
+    def test_list_targets(self, client):
         response = client.list_targets()
         assert response.ok
         assert isinstance(response.data, list)
 
-    def test_list_filter_target(self, client):
+    def test_list_filter_targets(self, client):
         response = client.list_targets(name=NAME)
         assert response.ok
         assert isinstance(response.data, list)
@@ -252,12 +252,12 @@ class TestConfigs(object):
         response = client.delete_config_by_name(new_config)
         assert response["@status"] == "200"
         
-    def test_list_config(self, client):
+    def test_list_configs(self, client):
         response = client.list_configs()
         assert response.ok
         assert isinstance(response.data, list)
 
-    def test_list_filter_config(self, client):
+    def test_list_filter_configs(self, client):
         response = client.list_configs(name="Host Discovery")
         assert response.ok
         assert isinstance(response.data, list)
@@ -336,12 +336,12 @@ class TestConfigs(object):
 
 class TestScanners(object):
 
-    def test_list_scanner(self, client):
+    def test_list_scanners(self, client):
         response = client.list_scanners()
         assert response.ok
         assert isinstance(response.data, list)
 
-    def test_list_filter_scanner(self, client):
+    def test_list_filter_scanners(self, client):
         response = client.list_scanners(name="OpenVAS Default")
         assert response.ok
         assert isinstance(response.data, list)
@@ -356,12 +356,12 @@ class TestScanners(object):
 
 class TestReportFormats(object):
 
-    def test_list_report_format(self, client):
+    def test_list_report_formats(self, client):
         response = client.list_report_formats()
         assert response.ok
         assert isinstance(response.data, list)
 
-    def test_list_filter_report_format(self, client):
+    def test_list_filter_report_formats(self, client):
         response = client.list_report_formats(name="PDF")
         assert response.ok
         assert isinstance(response.data, list)
@@ -477,6 +477,12 @@ class TestReports(object):
         parser.close()
         assert parser
         
+    @slow
+    def test_map_tasks_to_reports(self):
+        result = client.map_tasks_to_reports()
+        assert isinstance(result, dict)
+        
+        
 class TestResults(object):
 
     @slow
@@ -490,7 +496,11 @@ class TestResults(object):
         response = client.get_report(uuid=result["@id"])
         assert response.ok and response.status_code == 200
 
-
+    @slow
+    def test_map_tasks_to_results(self):
+        result = client.map_tasks_to_results()
+        assert isinstance(result, dict)
+ 
 
 class TestSchedules(object):
 
