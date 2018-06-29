@@ -31,6 +31,10 @@ If it doesn't already exist, create the directory
 sudo mkdir -p /usr/share/openvas/gsa/locale
 ```
 
+## Restart daemons after making these changes
+Restart:
+* openvas-gsa
+* openvas-manager
 
 ## Testing the OMP connection
 
