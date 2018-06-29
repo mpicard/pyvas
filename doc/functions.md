@@ -60,7 +60,7 @@ sense, or that the functionality hasn't yet been implemented in pyvas.
 | delete_task     | delete_task | Delete a task |
 | delete_user     | | Delete a user |
 | describe_auth   | | Describe authentication methods |
-| empty_trashcan  | | Empty the trashcan |
+| empty_trashcan  | empty_trashcan | Empty the trashcan |
 | get_agents      | | Get one or many agents |
 | get_configs     | list_configs, get_config, get_config_by_name | Get one or many configs |
 |                 | map_config_names | Create a dictionary of config names mapped to config ids |

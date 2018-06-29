@@ -137,6 +137,10 @@ def test_client_send_request(client):
     response = client._send_request("<describe_auth/>")
     assert etree.iselement(response)
 
+class TestMiscMethods(object):
+    def test_empty_trashcan(self, client):
+        response = client.empty_trashcan()
+        assert response.ok
 
 class TestClientGenericMethods(object):
 

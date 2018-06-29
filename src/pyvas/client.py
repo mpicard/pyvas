@@ -93,6 +93,11 @@ class Client(object):
         except HTTPError:
             raise AuthenticationError(username)
 
+    def empty_trashcan(self):
+        """Simply empties the trashcan"""
+        cmd = etree.Element("empty_trashcan")
+        return self._command(cmd)
+
     def list_port_lists(self, **kwargs):
         """Returns list of port lists, filtering via kwargs"""
         return self._list("port_list", **kwargs)
