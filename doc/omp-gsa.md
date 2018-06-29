@@ -13,6 +13,7 @@ Set the listening and manager address to this host, e.g.
 LISTEN_ADDRESS="203.0.113.56"
 PORT_NUMBER=4000
 MANAGER_ADDRESS="203.0.113.56"
+MANAGER_PORT=9390
 ```
 
 ## /etc/default/openvas-manager
