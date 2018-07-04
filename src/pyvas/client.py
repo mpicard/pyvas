@@ -507,10 +507,6 @@ class Client(object):
         """List task results."""
         return self._list("result", **kwargs)
 
-    #def get_result(self, uuid, **kwargs):
-        #"""Get scan result by uuid."""
-        #return self._get('result', uuid=uuid)
-
     def get_result(self, uuid, details=False):
         """Get scan result by uuid."""
         d = '0'

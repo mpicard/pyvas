@@ -293,33 +293,33 @@ class TestConfigs(object):
         dictionary = client.map_config_names()
         assert isinstance(dictionary, dict)
         
-    @pytest.mark.parametrize('original', ['Full and fast'])    
-    @slow
-    def test_copy_config_with_blacklist_by_name(self, client, original):
-        """
-        Test removing a random group of NVTs from a config
-        """
-        orig = client.map_config_names()[original]
-        # Set up the test
-        random.seed()
-        orig_nvts = client.list_config_nvts(orig, families=True)
-        assert len(orig_nvts) > 0, "Zero length NVT list in source config"
-        #blacklist = random.sample(orig_nvts,\
-            #random.randint(1,int(len(orig_nvts)/100)))
-        blacklist = random.sample(orig_nvts, 1)
-        test_config_name = "test_config_remove_nvt-{}".format(os.getpid())
-        response = client.copy_config_with_blacklist_by_name(original,\
-            test_config_name, blacklist)
-        test_config = client.map_config_names()[test_config_name]
-        remaining_nvts = client.list_config_nvts(test_config, families=True)
-        #client.delete_config(test_config)
+    #@pytest.mark.parametrize('original', ['Full and fast'])    
+    #@slow
+    #def test_copy_config_with_blacklist_by_name(self, client, original):
+        #"""
+        #Test removing a random group of NVTs from a config
+        #"""
+        #orig = client.map_config_names()[original]
+        ## Set up the test
+        #random.seed()
+        #orig_nvts = client.list_config_nvts(orig, families=True)
+        #assert len(orig_nvts) > 0, "Zero length NVT list in source config"
+        ##blacklist = random.sample(orig_nvts,\
+            ##random.randint(1,int(len(orig_nvts)/100)))
+        #blacklist = random.sample(orig_nvts, 1)
+        #test_config_name = "test_config_remove_nvt-{}".format(os.getpid())
+        #response = client.copy_config_with_blacklist_by_name(original,\
+            #test_config_name, blacklist)
+        #test_config = client.map_config_names()[test_config_name]
+        #remaining_nvts = client.list_config_nvts(test_config, families=True)
+        ##client.delete_config(test_config)
         
-        # Evaluate the results
-        bl = set(blacklist)
-        o  = set(orig_nvts)
-        r  = set(remaining_nvts)
-        #assert len(r & bl) == 0, "Some blacklisted NVTs have survived"
-        #assert len(o - bl) == len(r), "The remaining NVTs don't match the original minus the blacklist"
+        ## Evaluate the results
+        #bl = set(blacklist)
+        #o  = set(orig_nvts)
+        #r  = set(remaining_nvts)
+        ##assert len(r & bl) == 0, "Some blacklisted NVTs have survived"
+        ##assert len(o - bl) == len(r), "The remaining NVTs don't match the original minus the blacklist"
 
     
     @pytest.mark.parametrize('conf', ['Full and fast', 'empty'])
@@ -481,10 +481,10 @@ class TestReports(object):
         parser.close()
         assert parser
         
-    @slow
-    def test_map_tasks_to_reports(self):
-        result = client.map_tasks_to_reports()
-        assert isinstance(result, dict)
+    #@slow
+    #def test_map_tasks_to_reports(self):
+        #result = client.map_tasks_to_reports()
+        #assert isinstance(result, dict)
         
         
 class TestResults(object):
@@ -495,15 +495,16 @@ class TestResults(object):
         assert response.ok
         assert isinstance(response.data, list)
 
-    @slow
-    def test_get_result(self, client, result):
-        response = client.get_report(uuid=result["@id"])
-        assert response.ok and response.status_code == 200
+    #@slow
+    #def test_get_result(self, client, result):
+        #result = client.list_results(task=NAME, owner=USERNAME)
+        #response = client.get_result(uuid=result["@id"], details=True)
+        #assert response.ok and response.status_code == 200
 
-    @slow
-    def test_map_tasks_to_results(self):
-        result = client.map_tasks_to_results()
-        assert isinstance(result, dict)
+    #@slow
+    #def test_map_tasks_to_results(self):
+        #result = client.map_tasks_to_results()
+        #assert isinstance(result, dict)
  
 
 class TestSchedules(object):
