@@ -1,13 +1,14 @@
 # Mapping between OpenVAS OMP and pyvas commands
 
-Note that there are commands with missing equivalents in both directions. This
-can reflect that either the equivalent doesn't make sense, or that the
-functionality hasn't yet been implemented in pyvas.
+Note that there are commands with missing equivalents in both 
+directions. This can reflect that either the equivalent doesn't make 
+sense, or that the functionality hasn't yet been implemented in pyvas.
 
 | OpenVAS OMP 7.0 | pyvas            | Description |
 | ----------------|------------------|------------------------------------------- |
 |                 | _command  | Send, build and validate reponse |
 |                 | _get      | Generic get function |
+|                 | _map      | Generic function for mapping names to ids |
 |                 | _list     | Generic list function |
 |                 | _create   | Generic create function |
 |                 | _modify   | Generic modify function |
@@ -18,8 +19,10 @@ functionality hasn't yet been implemented in pyvas.
 | create_agent    | | Create an agent |
 | create_alert    | | Create an alert |
 | create_asset    | | Create an asset |
-| create_config   | create_config | Create a config |
-| create_credential | create_credential | Create a credential |
+| create_config   | create_config | Copy a config |
+|                 | copy_config_with_blacklist_by_name | Copies a config leaving out unwanted NVTs | 
+|                 | copy_config_by_name | Copies a config by name |
+| create_credential create_credential | Create a credential |
 | create_filter   | | Create a filter |
 | create_group    | | Create a group |
 | create_note     | | Create a note |
@@ -38,8 +41,8 @@ functionality hasn't yet been implemented in pyvas.
 | create_user     | | Create a user |
 | delete_alert    | | Delete an alert |
 | delete_asset    | | Delete an asset |
-| delete_config   | delete_config | Delete a config |
-| delete_credential | Delete a credential |
+| delete_config   | delete_config, delete_config_by_name | Delete a config |
+| delete_credential | | Delete a credential |
 | delete_filter   | | Delete a filter |
 | delete_group    | | Delete a group |
 | delete_note     | | Delete a note |
@@ -57,9 +60,13 @@ functionality hasn't yet been implemented in pyvas.
 | delete_task     | delete_task | Delete a task |
 | delete_user     | | Delete a user |
 | describe_auth   | | Describe authentication methods |
-| empty_trashcan  | | Empty the trashcan |
+| empty_trashcan  | empty_trashcan | Empty the trashcan |
 | get_agents      | | Get one or many agents |
-| get_configs     | list_configs, get_config | Get one or many configs |
+| get_configs     | list_configs, get_config, get_config_by_name | Get one or many configs |
+|                 | map_config_names | Create a dictionary of config names mapped to config ids |
+|                 | list_config_nvts | Lists all of the NVTs used by the given config |
+|                 | list_config_families | Lists all of the NVT families used by the given config |
+|                 | config_remove_nvt | Modifies a config by removing one nvt that it uses |
 | get_aggregates  | | Get aggregates of various resources |
 | get_alerts      | | Get one or many alerts |
 | get_assets      | | Get one or many assets |
@@ -70,14 +77,18 @@ functionality hasn't yet been implemented in pyvas.
 | get_info        | | Get information for items of a given type |
 | get_notes       | | Get one or many notes |
 | get_nvts        |list_nvts, get_nvt | Get one or many NVTs |
-| get_nvt_families | list_nvt_families | Get list of NVT families |
+|      | map_nvts | Return a dictionary mapping NVT families to lists of the NVTs that they contain |
+| get_nvt_families | list_nvt_families, get_nvt_family | Get one or many NVT families |
+|      | get_nvt_family | Return the id of the family that the NVT is a member of |
 | get_overrides   | | Get one or many overrides |
 | get_permissions | | Get one or many permissions |
 | get_port_lists  | list_port_lists, get_port_list | Get one or many port lists |
 | get_preferences | | Get one or many preferences |
 | get_reports     | list_report, get_report, download_report | Get one or many reports |
 | get_report_formats | list_report_formats, get_report_format | Get one or many report formats |
-| get_results     | | Get one or many results |
+|       | map_tasks_to_reports | Return a dictionary mapping tasks to lists of reports |
+| get_results     | list_results, get_result | Get one or many results |
+|       | map_tasks_to_results | Return a dictionary mapping tasks to lists of results |
 | get_roles       | | Get one or many roles |
 | get_scanners    | list_scanners, get_scanner | Get one or many scanners |
 | get_schedules   | list_schedules, get_schedule | Get one or many schedules |
@@ -86,6 +97,7 @@ functionality hasn't yet been implemented in pyvas.
 | get_tags        | | Get one or many tags |
 | get_targets     | list_targets, get_target | Get one or many targets |
 | get_tasks       | list_tasks, get_task | Get one or many tasks |
+|                 | map_task_names | Create a dictionary of task names mapped to task ids |
 | get_users       | | Get one or many users |
 | get_version     | | Get the OpenVAS Manager Protocol version |
 | help            | | Get the help text |
@@ -115,9 +127,12 @@ functionality hasn't yet been implemented in pyvas.
 | move_task       | | Move an existing task to another OMP slave scanner or the master |
 | restore         | | Restore a resource |
 | resume_task     | resume_task | Resume a task |
+|                 | resume_task_by_name | Resume a task by name instead of by id |
 | run_wizard      | | Run the wizard |
 | start_task      | start_task | Manually start an existing task |
+|                 | start_task_by_name | Start a task by name instead of by id |
 | stop_task       | stop_task | Stop a running task |
+|                 | stop_task_by_name | Stop a task by name instead of by id |
 | sync_cert       | | Synchronise with a CERT feed |
 | sync_feed       | | Synchronise with an NVT feed |
 | sync_config     | | Synchronise config with a scanner |
@@ -127,11 +142,14 @@ functionality hasn't yet been implemented in pyvas.
 | verify_report_format | | Verify a report format |
 | verify_scanner  | | Verify a scanner |
 
+## Further information
+
+* OpenVAS Project OMP Documentation - (http://docs.greenbone.net/API/OMP/omp-7.0.html)
+
 ## Authors
 
-* **Anna Langley** - *Initial work on this document* - [jal58](https://github.com/jal58)
+* **Anna Langley** - *Initial work on this document* - (https://github.com/jal58)
 
 ## Acknowledgments
 
-* OpenVAS Project OMP Documentation - (http://docs.greenbone.net/API/OMP/omp-7.0.html)
-* Martin Picard - [mpicard](https://github.com/mpicard)
+* Martin Picard (original developer of pyvas) - (https://github.com/mpicard)
