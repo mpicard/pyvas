@@ -42,7 +42,7 @@ sense, or that the functionality hasn't yet been implemented in pyvas.
 | delete_alert    | | Delete an alert |
 | delete_asset    | | Delete an asset |
 | delete_config   | delete_config, delete_config_by_name | Delete a config |
-| delete_credential | Delete a credential |
+| delete_credential | | Delete a credential |
 | delete_filter   | | Delete a filter |
 | delete_group    | | Delete a group |
 | delete_note     | | Delete a note |
