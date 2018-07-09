@@ -1,0 +1,17 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[dev-packages]
+
+[packages]
+pytest-cov = "*"
+pytest-mock = "*"
+lxml = "*"
+pluggy = "*"
+six = "*"
+tox = "*"
+
+[requires]
+python_version = "2.7"
