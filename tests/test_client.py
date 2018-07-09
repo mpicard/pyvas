@@ -20,7 +20,7 @@ from pyvas import Client, exceptions
 
 
 HOST = os.environ.get("OPENVAS_HOST")
-USERNAME = os.environ.get("OPENVAS_USER")
+USERNAME = os.environ.get("OPENVAS_USERNAME")
 PASSWORD = os.environ.get("OPENVAS_PASSWORD")
 NAME = six.text_type(uuid.uuid4())[:6]
 LOCALHOST = "127.0.0.1"
