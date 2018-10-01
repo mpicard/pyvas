@@ -1,9 +1,19 @@
-
+sudo: required
+services:
+  - docker
 language: python
 python:
   - "2.7"
   - "3.5"
   - "3.6"
+env:
+  - OPENVAS_HOST=localhost
+  - OPENVAS_USERNAME=admin
+  - OPENVAS_PASSWORD=admin
+  - OPENVASMD_PORT=9390
+before_install:
+  - docker pull mikesplain/openvas
+  - docker run -d -p 9390:9390 -e OV_PASSWORD=admin mikesplain/openvas
 install:
   - "pip install tox-travis coverage coveralls"
 script:
