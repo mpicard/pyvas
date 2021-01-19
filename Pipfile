@@ -8,7 +8,7 @@ name = "pypi"
 [packages]
 pytest-cov = "*"
 pytest-mock = "*"
-lxml = "*"
+lxml = "~=4.6.2"
 pluggy = "*"
 six = "*"
 tox = "*"
