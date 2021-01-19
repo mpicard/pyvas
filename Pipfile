@@ -8,10 +8,10 @@ name = "pypi"
 [packages]
 pytest-cov = "*"
 pytest-mock = "*"
-lxml = "*"
+lxml = "~=4.6.2"
 pluggy = "*"
 six = "*"
 tox = "*"
 
 [requires]
-python_version = "2.7"
+python_version = "3.7"

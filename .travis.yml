@@ -3,9 +3,9 @@ services:
   - docker
 language: python
 python:
-  - "2.7"
-  - "3.5"
-  - "3.6"
+  - "3.7"
+  - "3.8"
+  - "3.9"
 env:
   - OPENVAS_HOST=localhost
   - OPENVAS_USERNAME=admin
