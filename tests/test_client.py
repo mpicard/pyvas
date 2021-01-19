@@ -10,6 +10,7 @@ import uuid
 import time
 import six
 import pytest
+import random
 from lxml import etree
 try:  # pragma: no cover
     from HTMLParser import HTMLParser
@@ -84,6 +85,12 @@ def report(request, client):
     report = client.list_reports(task=NAME, owner=USERNAME).data[0]
     return report
 
+@pytest.fixture(scope="function")
+def result(request, client):
+    result = client.list_results(task=NAME, owner=USERNAME).data[0]
+    return result
+
+
 
 @pytest.fixture(scope="function")
 def schedule(request, client):
@@ -95,6 +102,10 @@ def schedule(request, client):
                                       duration_unit='day', period=2,
                                       period_unit='week', timezone='UTC')
 
+@pytest.fixture(scope="function")
+def port_list(request, client):
+    return client.list_port_lists()[0]
+        
 
 def test_environment():
     __tracebackhide__ = True
@@ -126,19 +137,34 @@ def test_client_send_request(client):
     response = client._send_request("<describe_auth/>")
     assert etree.iselement(response)
 
+class TestMiscMethods(object):
+    def test_empty_trashcan(self, client):
+        response = client.empty_trashcan()
+        assert response.ok
 
 class TestClientGenericMethods(object):
 
-    def test_list(self, client):
-        response = client._list('target')
+    @pytest.mark.parametrize('data_type', ['config','port_list','nvt','nvt_family','task','user'])
+    def test_list(self, client, data_type):
+        response = client._list(data_type)
         assert response.ok
+
+    @pytest.mark.parametrize('data_type', ['config','port_list','nvt','nvt_family','task','user'])
+    def test_list_with_arguments(self, client, data_type):
+        response = client._list(data_type, details='1')
+        assert response.ok
+        assert isinstance(response.data, list)
 
     def test_get(self, client):
         with pytest.raises(exceptions.ElementNotFound):
             client._get('target',
                         uuid=six.text_type(uuid.uuid4()),
                         cb=lambda x: x)
-
+                        
+    @pytest.mark.parametrize('data_type', ['config','port_list','nvt','nvt_family','task','user'])
+    def test_map(self, client, data_type):
+        dictionary = client._map(data_type)
+        assert isinstance(dictionary, dict)
 
 class TestPortLists(object):
     def test_create_port_list(self, client):
@@ -148,7 +174,7 @@ class TestPortLists(object):
 
         assert response.ok and response.status_code == 201
 
-    def test_list_port_list(self, client):
+    def test_list_port_lists(self, client):
         response = client.list_port_lists()
         assert response.ok
         assert isinstance(response.data, list)
@@ -158,12 +184,14 @@ class TestPortLists(object):
         assert response.ok
         assert isinstance(response.data, list)
 
+    @slow
     def test_get_port_list(self, client, port_list):
         response = client.get_port_list(uuid=port_list["@id"])
         assert response.ok
         assert port_list["name"] == response["name"]
         assert port_list["@id"] == response["@id"]
 
+    @slow
     def test_delete_port_list(self, client, port_list):
         response = client.delete_port_list(uuid=port_list["@id"])
         assert response.ok
@@ -177,12 +205,12 @@ class TestTargets(object):
                                         comment="test")
         assert response.ok and response.status_code == 201
 
-    def test_list_target(self, client):
+    def test_list_targets(self, client):
         response = client.list_targets()
         assert response.ok
         assert isinstance(response.data, list)
 
-    def test_list_filter_target(self, client):
+    def test_list_filter_targets(self, client):
         response = client.list_targets(name=NAME)
         assert response.ok
         assert isinstance(response.data, list)
@@ -216,12 +244,24 @@ class TestConfigs(object):
         response = client.create_config(name=NAME, copy_uuid=config["@id"])
         assert response.ok
 
-    def test_list_config(self, client):
+    def test_copy_config_by_name(self, client, config):
+        new_config = "{}-{}".format(config["name"],os.getpid())
+        response = client.copy_config_by_name(config["name"], new_config)
+        assert response.ok
+        client.delete_config_by_name(new_config)
+        
+    def test_delete_config_by_name(self, client, config):
+        new_config = "{}-{}".format(config["name"],os.getpid())
+        empty = client.copy_config_by_name(config["name"], new_config)
+        response = client.delete_config_by_name(new_config)
+        assert response["@status"] == "200"
+        
+    def test_list_configs(self, client):
         response = client.list_configs()
         assert response.ok
         assert isinstance(response.data, list)
 
-    def test_list_filter_config(self, client):
+    def test_list_filter_configs(self, client):
         response = client.list_configs(name="Host Discovery")
         assert response.ok
         assert isinstance(response.data, list)
@@ -229,24 +269,83 @@ class TestConfigs(object):
 
     def test_get_config(self, client, config):
         response = client.get_config(uuid=config["@id"])
-        assert response.ok
+        #assert response.ok
         assert response.get('@id') == config["@id"]
-
+        
+    def test_get_config_by_name(self,client,config):
+        response = client.get_config_by_name(config["name"])
+        assert response.get("name") == config["name"]
+    
+    @slow        
+    def test_list_config_families(self, client, config):
+        response = client.list_config_families(config["@id"])
+        assert isinstance(response, list)
+    
+    @slow
     def test_delete_config(self, client, config):
         empty = client.create_config(name="delete me",
                                      copy_uuid=config["@id"])
         response = client.delete_config(uuid=empty["@id"])
         assert response["@status"] == "200"
 
+    @slow
+    def test_map_config_names(self, client):
+        dictionary = client.map_config_names()
+        assert isinstance(dictionary, dict)
+        
+    #@pytest.mark.parametrize('original', ['Full and fast'])    
+    #@slow
+    #def test_copy_config_with_blacklist_by_name(self, client, original):
+        #"""
+        #Test removing a random group of NVTs from a config
+        #"""
+        #orig = client.map_config_names()[original]
+        ## Set up the test
+        #random.seed()
+        #orig_nvts = client.list_config_nvts(orig, families=True)
+        #assert len(orig_nvts) > 0, "Zero length NVT list in source config"
+        ##blacklist = random.sample(orig_nvts,\
+            ##random.randint(1,int(len(orig_nvts)/100)))
+        #blacklist = random.sample(orig_nvts, 1)
+        #test_config_name = "test_config_remove_nvt-{}".format(os.getpid())
+        #response = client.copy_config_with_blacklist_by_name(original,\
+            #test_config_name, blacklist)
+        #test_config = client.map_config_names()[test_config_name]
+        #remaining_nvts = client.list_config_nvts(test_config, families=True)
+        ##client.delete_config(test_config)
+        
+        ## Evaluate the results
+        #bl = set(blacklist)
+        #o  = set(orig_nvts)
+        #r  = set(remaining_nvts)
+        ##assert len(r & bl) == 0, "Some blacklisted NVTs have survived"
+        ##assert len(o - bl) == len(r), "The remaining NVTs don't match the original minus the blacklist"
+
+    
+    @pytest.mark.parametrize('conf', ['Full and fast', 'empty'])
+    @slow
+    def test_list_config_nvts(self, client, conf):
+        uuid = client.map_config_names()[conf]
+        without_families = client.list_config_nvts(uuid)
+        with_families = client.list_config_nvts(uuid, families=True)
+        if conf == "empty":
+            assert len(without_families) == 0, "empty config has non-empty list of independent NVTs"
+            assert len(with_families) == 0, "empty config has non-empty list of families"
+        else:
+            assert len(with_families) > 0, \
+                "{} config shows zero NVTs".format(conf)
+            assert len(with_families) >= len(without_families), \
+                "{} config shows more NVTs without families than with".format(conf)
+
 
 class TestScanners(object):
 
-    def test_list_scanner(self, client):
+    def test_list_scanners(self, client):
         response = client.list_scanners()
         assert response.ok
         assert isinstance(response.data, list)
 
-    def test_list_filter_scanner(self, client):
+    def test_list_filter_scanners(self, client):
         response = client.list_scanners(name="OpenVAS Default")
         assert response.ok
         assert isinstance(response.data, list)
@@ -261,12 +360,12 @@ class TestScanners(object):
 
 class TestReportFormats(object):
 
-    def test_list_report_format(self, client):
+    def test_list_report_formats(self, client):
         response = client.list_report_formats()
         assert response.ok
         assert isinstance(response.data, list)
 
-    def test_list_filter_report_format(self, client):
+    def test_list_filter_report_formats(self, client):
         response = client.list_report_formats(name="PDF")
         assert response.ok
         assert isinstance(response.data, list)
@@ -347,7 +446,7 @@ class TestTasks(object):
         response = client.resume_task(uuid=task["@id"])
         assert response.ok
 
-    def test_delet_task(self, client, task):
+    def test_delete_task(self, client, task):
         response = client.delete_task(uuid=task["@id"])
         assert response.ok
 
@@ -381,7 +480,32 @@ class TestReports(object):
         parser.feed(response)
         parser.close()
         assert parser
+        
+    #@slow
+    #def test_map_tasks_to_reports(self):
+        #result = client.map_tasks_to_reports()
+        #assert isinstance(result, dict)
+        
+        
+class TestResults(object):
 
+    @slow
+    def test_list_results(self, client):
+        response = client.list_results(task=NAME, owner=USERNAME)
+        assert response.ok
+        assert isinstance(response.data, list)
+
+    #@slow
+    #def test_get_result(self, client, result):
+        #result = client.list_results(task=NAME, owner=USERNAME)
+        #response = client.get_result(uuid=result["@id"], details=True)
+        #assert response.ok and response.status_code == 200
+
+    #@slow
+    #def test_map_tasks_to_results(self):
+        #result = client.map_tasks_to_results()
+        #assert isinstance(result, dict)
+ 
 
 class TestSchedules(object):
 
@@ -412,3 +536,48 @@ class TestSchedules(object):
     def test_delete_schedule(self, client, schedule):
         response = client.delete_schedule(uuid=schedule["@id"])
         assert response.ok
+
+class TestNVTs(object):
+    
+    def test_list_nvt_families(self, client):
+        response = client.list_nvt_families()
+        assert len(response) > 0
+        assert isinstance(response, list)
+        
+    def test_map_nvts(self, client):
+        response = client.map_nvts()
+        assert len(response) > 1
+        assert isinstance(response, dict)
+        
+    def test_map_nvts_to_families(self, client):
+        fam_to_nvt = client.map_nvts()
+        nvt_to_fam = client.map_nvts_to_families()
+        for f in fam_to_nvt.keys():
+            for nvt in fam_to_nvt[f]:
+                assert nvt_to_fam[nvt['oid']] == f
+
+    def test_list_nvts(self, client):
+        response = client.list_nvts()
+        assert response.ok
+        assert isinstance(response.data['nvt'], list)
+        assert isinstance(response.data['nvt'][0]["@oid"], str)
+        assert isinstance(response.data['nvt'][0]["name"], str)
+
+    def test_list_nvts_with_details(self, client):
+        response = client.list_nvts(details=True)
+        assert response.ok
+        assert isinstance(response.data['nvt'], list)
+        assert isinstance(response.data['nvt'][0]["@oid"], str)
+        assert isinstance(response.data['nvt'][0]["name"], str)
+        assert isinstance(response.data['nvt'][0]["family"], str)
+
+
+    def test_get_nvt(self, client):
+        nvts = client.list_nvts()
+        response = client.get_nvt(nvts.data['nvt'][0]["@oid"])
+        assert response.ok
+        assert response.data["@oid"] == nvts.data['nvt'][0]["@oid"]
+
+
+
+
