@@ -4,14 +4,16 @@ verify_ssl = true
 name = "pypi"
 
 [dev-packages]
-
-[packages]
+pytest = "4.6.11"
 pytest-cov = "*"
 pytest-mock = "*"
+pytest-travis-fold = "*"
+tox = "*"
+
+[packages]
 lxml = "~=4.6.2"
 pluggy = "*"
 six = "*"
-tox = "*"
 
 [requires]
 python_version = "3.7"
