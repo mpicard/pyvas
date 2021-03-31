@@ -11,7 +11,7 @@ pytest-travis-fold = "*"
 tox = "*"
 
 [packages]
-lxml = "~=4.6.2"
+lxml = "~=4.6.3"
 pluggy = "*"
 six = "*"
 
